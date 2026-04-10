@@ -1,3 +1,29 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openaisdk.autoconfigure.OpenAiSdkChatAutoConfiguration
+      - org.springframework.ai.model.openaisdk.autoconfigure.OpenAiSdkEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openaisdk.autoconfigure.OpenAiSdkImageAutoConfiguration
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   application:
     name: backend
+  datasource:
+    url: ${CWA_DB_URL}
+    username: ${CWA_DB_USERNAME}
+    password: ${CWA_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+
+app:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:chinesewithai-backend}
+      secret: ${JWT_SECRET:very-secure-development-secret-change-in-production-12345}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
