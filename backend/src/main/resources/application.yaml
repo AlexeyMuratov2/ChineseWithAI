@@ -1,4 +1,9 @@
 spring:
+  devtools:
+    restart:
+      # DevTools uses a restart ClassLoader; Spring Modulith's PersistentApplicationEventMulticaster can hit
+      # ClassCastException between Boot lifecycle events (e.g. ServletWebServerInitializedEvent vs ApplicationFailedEvent).
+      enabled: false
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openaisdk.autoconfigure.OpenAiSdkChatAutoConfiguration

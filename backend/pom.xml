@@ -234,6 +234,57 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
+            <!--
+                Flyway CLI goals do not read application.yaml or Spring's .env import.
+                This loads the same optional files as application.yaml (repo root + backend),
+                then Flyway reads CWA_DB_* as Maven project properties.
+                Run: mvn validate flyway:repair   (validate loads .env; flyway:repair alone does not)
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>properties-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <execution>
+                        <id>read-dotenv-for-flyway</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>read-project-properties</goal>
+                        </goals>
+                        <configuration>
+                            <files>
+                                <file>${project.basedir}/../.env</file>
+                                <file>${project.basedir}/.env</file>
+                            </files>
+                            <encoding>UTF-8</encoding>
+                            <!-- quiet: skip missing files; ignoreMissingFiles: skip unloadable paths -->
+                            <quiet>true</quiet>
+                            <ignoreMissingFiles>true</ignoreMissingFiles>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-postgresql</artifactId>
+                        <version>11.7.2</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <locations>
+                        <location>classpath:db/migration</location>
+                    </locations>
+                    <url>${CWA_DB_URL}</url>
+                    <user>${CWA_DB_USERNAME}</user>
+                    <password>${CWA_DB_PASSWORD}</password>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
