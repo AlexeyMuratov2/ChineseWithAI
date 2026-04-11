@@ -11,14 +11,15 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 }
 
 const variantMap: Record<ButtonVariant, string> = {
-  primary: 'bg-app-accent text-white hover:opacity-90',
-  secondary: 'bg-slate-200 text-slate-900 hover:bg-slate-300',
-  ghost: 'bg-transparent text-app-fg hover:bg-slate-100',
+  primary:
+    'bg-gradient-to-r from-[#4f62ff] via-[#5b7bff] to-[#4d98ff] text-white shadow-[0_10px_20px_rgba(63,88,255,0.28)] hover:brightness-105',
+  secondary: 'bg-[#eef1ff] text-[#1f2572] hover:bg-[#e0e7ff]',
+  ghost: 'bg-transparent text-[#2f3476] hover:bg-[#edf0ff]',
 }
 
 const sizeMap: Record<ButtonSize, string> = {
   sm: 'h-9 px-3 text-sm',
-  md: 'h-10 px-4 text-sm',
+  md: 'h-10 px-5 text-sm',
 }
 
 export const Button = ({
@@ -32,7 +33,7 @@ export const Button = ({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f62ff] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
         variantMap[variant],
         sizeMap[size],
         className,

@@ -1,0 +1,64 @@
+# Локальные зависимости backend: PostgreSQL + MinIO (S3-совместимое хранилище).
+# Запуск только инфраструктуры (удобно с ./mvnw spring-boot:run на хосте):
+#   docker compose up -d
+# Полный стек включая JVM-приложение:
+#   docker compose --profile app up --build -d
+#
+# Для приложения на хосте используйте backend/.env как сейчас (localhost:5432, 127.0.0.1:9000).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: chinesewithai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chinesewithai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+
+  backend:
+    profiles: [app]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      CWA_DB_URL: jdbc:postgresql://postgres:5432/chinesewithai
+      CWA_DB_USERNAME: postgres
+      CWA_DB_PASSWORD: root
+      CWA_S3_ENDPOINT: http://minio:9000
+      CWA_S3_ACCESS_KEY: minioadmin
+      CWA_S3_SECRET_KEY: minioadmin
+      CWA_S3_BUCKET: cwa-dev-files
+      CWA_S3_AUTO_CREATE_BUCKET: "true"
+      SPRING_AI_OPENAI_API_KEY: ${SPRING_AI_OPENAI_API_KEY:-change-me}
+
+volumes:
+  postgres_data:
+  minio_data:

@@ -8,7 +8,7 @@ export const Input = ({ className, ...props }: Props) => {
   return (
     <input
       className={cn(
-        'h-10 w-full rounded-md border border-app-border bg-white px-3 text-sm text-app-fg outline-none transition focus:border-app-accent',
+        'h-11 w-full rounded-xl border border-[#d8dcff] bg-white px-3 text-sm text-[#1e2468] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] outline-none transition focus:border-[#6273ff] focus:ring-2 focus:ring-[#6273ff]/20',
         className,
       )}
       {...props}

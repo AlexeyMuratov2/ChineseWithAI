@@ -9,19 +9,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import ru.chinesewithai.backend.AbstractIntegrationTest;
 import ru.chinesewithai.backend.TestcontainersConfiguration;
 import ru.chinesewithai.backend.lessondraft.application.port.out.LessonDraftRepository;
 import ru.chinesewithai.backend.lessondraft.domain.model.LessonDraft;
 
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
-@SpringBootTest
 @AutoConfigureMockMvc
-class LessonDraftRepositoryJpaAdapterIntegrationTest {
+class LessonDraftRepositoryJpaAdapterIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private LessonDraftRepository lessonDraftRepository;

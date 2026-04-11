@@ -6,6 +6,36 @@ export type HttpRequestConfig = {
   body?: unknown
 }
 
+export class HttpError extends Error {
+  readonly status: number
+  readonly payload: unknown
+
+  constructor(status: number, message: string, payload: unknown) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+    this.payload = payload
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const parseResponsePayload = async (response: Response) => {
+  if (response.status === 204) {
+    return null
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+
+  if (contentType.includes('application/json')) {
+    return await response.json()
+  }
+
+  return await response.text()
+}
+
 export const httpClient = async <T>(path: string, config: HttpRequestConfig = {}) => {
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     method: config.method ?? 'GET',
@@ -16,9 +46,19 @@ export const httpClient = async <T>(path: string, config: HttpRequestConfig = {}
     body: config.body ? JSON.stringify(config.body) : undefined,
   })
 
+  const payload = await parseResponsePayload(response)
+
   if (!response.ok) {
-    throw new Error(`HTTP error: ${response.status}`)
+    let message = `HTTP error: ${response.status}`
+
+    if (isRecord(payload) && typeof payload.detail === 'string') {
+      message = payload.detail
+    } else if (typeof payload === 'string' && payload.length > 0) {
+      message = payload
+    }
+
+    throw new HttpError(response.status, message, payload)
   }
 
-  return (await response.json()) as T
+  return payload as T
 }

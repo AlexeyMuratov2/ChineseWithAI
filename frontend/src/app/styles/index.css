@@ -1,21 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-bg: #f8fafc;
-  --color-fg: #0f172a;
-  --color-muted: #475569;
-  --color-border: #cbd5e1;
-  --color-accent: #2563eb;
+  --color-bg: #f9fbff;
+  --color-fg: #1d2368;
+  --color-muted: #4e5290;
+  --color-border: #d8dcff;
+  --color-accent: #4f62ff;
 }
 
 [data-theme='dark'] {
-  --color-bg: #020617;
-  --color-fg: #e2e8f0;
-  --color-muted: #94a3b8;
-  --color-border: #334155;
-  --color-accent: #60a5fa;
+  --color-bg: #111436;
+  --color-fg: #f2f4ff;
+  --color-muted: #b8bdfd;
+  --color-border: #2e3272;
+  --color-accent: #7f8dff;
+}
+
+@keyframes orbFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(0, -26px, 0) scale(1.04);
+  }
+}
+
+@keyframes orbDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(20px, -18px, 0);
+  }
+}
+
+@keyframes cardAppear {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.97);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 @layer base {
@@ -31,20 +67,106 @@
 
   body {
     @apply m-0 bg-app-bg text-app-fg antialiased;
-    font-family:
-      Inter,
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      Roboto,
-      Oxygen,
-      Ubuntu,
-      Cantarell,
-      'Helvetica Neue',
-      sans-serif;
+    font-family: 'Nunito', 'Trebuchet MS', 'Segoe UI', sans-serif;
   }
 
   a {
     @apply text-inherit no-underline;
   }
+}
+
+.font-display {
+  font-family: 'Baloo 2', 'Trebuchet MS', cursive;
+}
+
+.game-auth-background {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.5) 0 16%, transparent 46%),
+    radial-gradient(circle at 86% 14%, rgba(255, 251, 163, 0.52) 0 14%, transparent 44%),
+    linear-gradient(135deg, #ffcf5a 0%, #79d8ff 38%, #6f7dff 78%, #8259ff 100%);
+}
+
+.game-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mix-blend-mode: soft-light;
+  opacity: 0.42;
+}
+
+.game-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+.game-orb--one {
+  left: -70px;
+  top: 14%;
+  height: 250px;
+  width: 250px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 150, 59, 0.3));
+  animation: orbFloat 7s ease-in-out infinite;
+}
+
+.game-orb--two {
+  right: -95px;
+  top: 56%;
+  height: 300px;
+  width: 300px;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.8), rgba(106, 226, 255, 0.28));
+  animation: orbDrift 8s ease-in-out infinite;
+}
+
+.game-orb--three {
+  right: 42%;
+  bottom: -92px;
+  height: 210px;
+  width: 210px;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.82), rgba(122, 93, 255, 0.33));
+  animation: orbFloat 9s ease-in-out infinite;
+}
+
+.game-form-card {
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.93) 0%, rgba(244, 246, 255, 0.96) 100%);
+  backdrop-filter: blur(8px);
+}
+
+.game-input::placeholder {
+  color: #8c92cd;
+}
+
+.game-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.game-button::after {
+  content: '';
+  position: absolute;
+  inset: -120% 30% auto auto;
+  height: 240%;
+  width: 36%;
+  transform: rotate(22deg);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.34) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transition: transform 0.45s ease;
+}
+
+.game-button:hover::after {
+  transform: translateX(-120px) rotate(22deg);
+}
+
+.animate-card-appear {
+  animation: cardAppear 460ms ease-out both;
 }

@@ -26,9 +26,25 @@ spring:
   jpa:
     open-in-view: false
 
+# Push metrics to an OTLP collector (e.g. Grafana Agent). Off by default so local runs without :4318 do not WARN every step.
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: ${CWA_OTLP_METRICS_EXPORT_ENABLED:false}
+
 app:
   security:
     jwt:
       issuer: ${JWT_ISSUER:chinesewithai-backend}
       secret: ${JWT_SECRET:very-secure-development-secret-change-in-production-12345}
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+  # S3-compatible storage (MinIO locally via docker-compose at repo root). Override with CWA_S3_* for real S3.
+  stored-file:
+    s3:
+      endpoint: ${CWA_S3_ENDPOINT:http://127.0.0.1:9000}
+      region: ${CWA_S3_REGION:us-east-1}
+      bucket: ${CWA_S3_BUCKET:cwa-dev-files}
+      access-key: ${CWA_S3_ACCESS_KEY:minioadmin}
+      secret-key: ${CWA_S3_SECRET_KEY:minioadmin}
+      auto-create-bucket: ${CWA_S3_AUTO_CREATE_BUCKET:true}
