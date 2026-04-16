@@ -8,6 +8,13 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5174,
     strictPort: true,
+    // Dev: browser calls same origin (/api/...); Vite forwards to Spring Boot (no CORS needed).
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [react()],
   resolve: {

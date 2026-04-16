@@ -1,12 +1,15 @@
 package ru.chinesewithai.backend.user.api;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ru.chinesewithai.backend.config.OpenApiConfig;
 import ru.chinesewithai.backend.user.api.dto.CurrentUserResponse;
 import ru.chinesewithai.backend.user.application.port.in.GetCurrentUserUseCase;
 
 @RestController
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH_SCHEME)
 @RequestMapping("/api/v1/users")
 public class CurrentUserController {
 

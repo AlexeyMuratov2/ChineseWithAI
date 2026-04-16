@@ -1,5 +1,6 @@
 package ru.chinesewithai.backend.storedfile.api;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import ru.chinesewithai.backend.config.OpenApiConfig;
 import ru.chinesewithai.backend.storedfile.api.dto.CreateUploadSessionRequest;
 import ru.chinesewithai.backend.storedfile.api.dto.CreateUploadSessionResponse;
 import ru.chinesewithai.backend.storedfile.api.dto.StoredFileMetadataResponse;
@@ -38,6 +40,7 @@ import ru.chinesewithai.backend.storedfile.domain.model.StoredFileId;
  * types here.
  */
 @RestController
+@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH_SCHEME)
 @RequestMapping("/api/v1/stored-files")
 public class StoredFileController {
 

@@ -9,6 +9,9 @@ spring:
       - org.springframework.ai.model.openaisdk.autoconfigure.OpenAiSdkImageAutoConfiguration
 
 app:
+  agentruntime:
+    deepseek:
+      api-key: test-deepseek-key
   security:
     jwt:
       issuer: chinesewithai-backend-test

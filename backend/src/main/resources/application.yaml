@@ -34,6 +34,10 @@ management:
         enabled: ${CWA_OTLP_METRICS_EXPORT_ENABLED:false}
 
 app:
+  agentruntime:
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
   security:
     jwt:
       issuer: ${JWT_ISSUER:chinesewithai-backend}
