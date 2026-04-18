@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.chinesewithai.backend.config.OpenApiConfig;
 import ru.chinesewithai.backend.lesson.api.dto.CreateLessonRequest;
 import ru.chinesewithai.backend.lesson.api.dto.GenerateLessonRequest;
+import ru.chinesewithai.backend.lesson.api.dto.LessonModuleResponse;
 import ru.chinesewithai.backend.lesson.api.dto.LessonResponse;
 import ru.chinesewithai.backend.lesson.application.command.CreateLessonFromJsonCommand;
 import ru.chinesewithai.backend.lesson.application.command.GenerateLessonFromDraftCommand;
@@ -24,6 +26,8 @@ import ru.chinesewithai.backend.lesson.application.command.GetLessonQuery;
 import ru.chinesewithai.backend.lesson.application.port.in.CreateLessonFromJsonUseCase;
 import ru.chinesewithai.backend.lesson.application.port.in.GenerateLessonFromDraftUseCase;
 import ru.chinesewithai.backend.lesson.application.port.in.GetLessonUseCase;
+import ru.chinesewithai.backend.lesson.application.port.in.ListLessonModulesUseCase;
+import ru.chinesewithai.backend.lesson.application.view.LessonModuleSummaryView;
 import ru.chinesewithai.backend.lesson.application.view.LessonView;
 
 @RestController
@@ -34,16 +38,19 @@ public class LessonController {
     private final CreateLessonFromJsonUseCase createLessonFromJsonUseCase;
     private final GenerateLessonFromDraftUseCase generateLessonFromDraftUseCase;
     private final GetLessonUseCase getLessonUseCase;
+    private final ListLessonModulesUseCase listLessonModulesUseCase;
     private final ObjectMapper objectMapper;
 
     public LessonController(
             CreateLessonFromJsonUseCase createLessonFromJsonUseCase,
             GenerateLessonFromDraftUseCase generateLessonFromDraftUseCase,
             GetLessonUseCase getLessonUseCase,
+            ListLessonModulesUseCase listLessonModulesUseCase,
             ObjectMapper objectMapper) {
         this.createLessonFromJsonUseCase = createLessonFromJsonUseCase;
         this.generateLessonFromDraftUseCase = generateLessonFromDraftUseCase;
         this.getLessonUseCase = getLessonUseCase;
+        this.listLessonModulesUseCase = listLessonModulesUseCase;
         this.objectMapper = objectMapper;
     }
 
@@ -65,6 +72,11 @@ public class LessonController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(lesson));
     }
 
+    @GetMapping("/modules")
+    public List<LessonModuleResponse> listLessonModules() {
+        return listLessonModulesUseCase.listAll().stream().map(this::toModuleResponse).toList();
+    }
+
     @GetMapping("/{lessonId}")
     public LessonResponse getLesson(@PathVariable UUID lessonId) {
         return toResponse(getLessonUseCase.getLesson(new GetLessonQuery(lessonId)));
@@ -74,6 +86,10 @@ public class LessonController {
         if (content == null || !content.isObject()) {
             throw new IllegalArgumentException("content must be a JSON object");
         }
+    }
+
+    private LessonModuleResponse toModuleResponse(LessonModuleSummaryView view) {
+        return new LessonModuleResponse(view.moduleKey(), view.displayName(), view.schemaVersion(), view.active());
     }
 
     private LessonResponse toResponse(LessonView view) {

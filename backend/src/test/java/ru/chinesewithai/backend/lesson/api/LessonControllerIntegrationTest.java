@@ -1,5 +1,6 @@
 package ru.chinesewithai.backend.lesson.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -7,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,12 +40,32 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void clean() {
+        jdbcTemplate.update("DELETE FROM lesson_vocabulary_items");
+        jdbcTemplate.update("DELETE FROM learner_vocabulary_progress");
         jdbcTemplate.update("DELETE FROM lessons");
         jdbcTemplate.update("DELETE FROM agent_steps");
         jdbcTemplate.update("DELETE FROM agent_sessions");
         jdbcTemplate.update("DELETE FROM lesson_draft_sources");
         jdbcTemplate.update("DELETE FROM lesson_drafts");
         jdbcTemplate.update("DELETE FROM app_user");
+    }
+
+    @Test
+    void listLessonModulesRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/lessons/modules")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listLessonModulesReturnsCatalogEntries() throws Exception {
+        register("lesson_modules_reader", "StrongPass123!", "Lesson Modules Reader");
+        var token = login("lesson_modules_reader", "StrongPass123!");
+
+        mockMvc.perform(get("/api/v1/lessons/modules").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].moduleKey").value("TestModule"))
+                .andExpect(jsonPath("$[0].displayName").value("TestModule"))
+                .andExpect(jsonPath("$[0].schemaVersion").value(1))
+                .andExpect(jsonPath("$[0].active").value(true));
     }
 
     @Test
@@ -209,6 +231,108 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnprocessableEntity());
     }
 
+    @Test
+    void manualCreatePersistsLessonVocabularyAndLearnerProgress() throws Exception {
+        register("lesson_vocab_manual", "StrongPass123!", "Lesson Vocabulary Manual");
+        var token = login("lesson_vocab_manual", "StrongPass123!");
+        var userId = userIdForUsername("lesson_vocab_manual");
+
+        var createResponse = mockMvc.perform(post("/api/v1/lessons")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "moduleKey", "TestModule",
+                                "content", validTestModuleLessonJson()))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var createdLesson = objectMapper.readTree(createResponse);
+        var lessonId = UUID.fromString(createdLesson.get("id").asText());
+
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM lesson_vocabulary_items WHERE lesson_id = ?",
+                        Integer.class,
+                        lessonId))
+                .isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM learner_vocabulary_progress WHERE user_id = ?",
+                        Integer.class,
+                        userId))
+                .isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM learner_vocabulary_progress WHERE user_id = ? AND status = 'NEW'",
+                        Integer.class,
+                        userId))
+                .isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM learner_vocabulary_progress WHERE user_id = ? AND last_reviewed_at IS NULL",
+                        Integer.class,
+                        userId))
+                .isEqualTo(2);
+    }
+
+    @Test
+    void repeatedGenerateUsesVocabularyReviewPreGenerationWorkflowAndPersistsTrace() throws Exception {
+        register("lesson_vocab_generate", "StrongPass123!", "Lesson Vocabulary Generate");
+        var token = login("lesson_vocab_generate", "StrongPass123!");
+        var userId = userIdForUsername("lesson_vocab_generate");
+
+        var firstDraftId = createDraftWithSingleTextSource(token, "First generate", "Source one");
+        mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", firstDraftId,
+                                "moduleKey", "TestModule",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated());
+
+        var secondDraftId = createDraftWithSingleTextSource(token, "Second generate", "Source two");
+        var secondGenerateResponse = mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", secondDraftId,
+                                "moduleKey", "TestModule",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var generatedLesson = objectMapper.readTree(secondGenerateResponse);
+        var generatorSessionId = UUID.fromString(generatedLesson.get("generatorSessionId").asText());
+        var lessonId = UUID.fromString(generatedLesson.get("id").asText());
+
+        var stepPayloads = jdbcTemplate.query(
+                "SELECT step_type, payload_json FROM agent_steps WHERE session_id = ? ORDER BY step_index",
+                (rs, rowNum) -> new AgentStepRow(rs.getString("step_type"), rs.getString("payload_json")),
+                generatorSessionId);
+
+        var startedPayload = payloadOf(stepPayloads, "PRE_GENERATION_STARTED");
+        var stepPayload = payloadOf(stepPayloads, "PRE_GENERATION_STEP");
+        var completedPayload = payloadOf(stepPayloads, "PRE_GENERATION_COMPLETED");
+
+        assertThat(startedPayload.path("resolvedWorkflowVariantKey").asText())
+                .isEqualTo("draft-generation-with-review:v1");
+        assertThat(stepPayload.path("stepKey").asText()).isEqualTo("lesson-vocabulary-review-plan");
+        assertThat(stepPayload.path("emittedArtifactKeys")).extracting(JsonNode::asText).contains("vocabularyReviewPlan");
+        assertThat(completedPayload.path("artifactKeys")).extracting(JsonNode::asText).contains("vocabularyReviewPlan");
+
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM lesson_vocabulary_items WHERE lesson_id = ?",
+                        Integer.class,
+                        lessonId))
+                .isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM learner_vocabulary_progress WHERE user_id = ?",
+                        Integer.class,
+                        userId))
+                .isEqualTo(2);
+    }
+
     private UUID createDraftWithSingleTextSource(String token, String title, String textContent) throws Exception {
         var draftId = createDraft(token, title);
         addTextSource(token, draftId, textContent);
@@ -283,6 +407,19 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                                 "translation", "I know this teacher, so I study Chinese with him every day."))));
     }
 
+    private UUID userIdForUsername(String username) {
+        return UUID.fromString(jdbcTemplate.queryForObject(
+                "SELECT id::text FROM app_user WHERE username = ?", String.class, username));
+    }
+
+    private JsonNode payloadOf(List<AgentStepRow> steps, String stepType) throws Exception {
+        return objectMapper.readTree(steps.stream()
+                .filter(step -> step.stepType().equals(stepType))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing step: " + stepType))
+                .payloadJson());
+    }
+
     private void register(String username, String password, String displayName) throws Exception {
         var payload = objectMapper.writeValueAsString(Map.of(
                 "username", username,
@@ -309,4 +446,6 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
     private static String bearer(String token) {
         return "Bearer " + token;
     }
+
+    private record AgentStepRow(String stepType, String payloadJson) {}
 }

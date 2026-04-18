@@ -3,10 +3,12 @@ package ru.chinesewithai.backend.lesson.application.validation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import ru.chinesewithai.backend.lesson.application.exception.LessonContentValidationException;
 import ru.chinesewithai.backend.lesson.domain.model.LanguageTag;
+import ru.chinesewithai.backend.lesson.domain.model.LessonVocabularyWord;
 import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 
 @Component
@@ -37,7 +39,7 @@ public class LessonContentValidator {
         var studyLanguage = requireLanguage(root.get("studyLanguage"), "studyLanguage");
         var explanationLanguage = requireLanguage(root.get("explanationLanguage"), "explanationLanguage");
         var translationLanguage = requireLanguage(root.get("translationLanguage"), "translationLanguage");
-        requireArray(root.get("newWords"), "newWords");
+        var newWords = readNewWords(requireArray(root.get("newWords"), "newWords"));
         requireArray(root.get("sections"), "sections");
 
         if (module != null) {
@@ -60,7 +62,23 @@ public class LessonContentValidator {
                 studyLanguage.value(),
                 explanationLanguage.value(),
                 translationLanguage.value(),
+                newWords,
                 writeJson(root));
+    }
+
+    private java.util.List<LessonVocabularyWord> readNewWords(JsonNode newWordsNode) {
+        var newWords = new ArrayList<LessonVocabularyWord>(newWordsNode.size());
+        for (int i = 0; i < newWordsNode.size(); i++) {
+            var wordNode = newWordsNode.get(i);
+            if (wordNode == null || !wordNode.isObject()) {
+                throw new LessonContentValidationException("newWords[" + i + "] must be an object");
+            }
+            newWords.add(new LessonVocabularyWord(
+                    requireText(wordNode.get("word"), "newWords[" + i + "].word", 255),
+                    requireText(wordNode.get("pinyin"), "newWords[" + i + "].pinyin", 255),
+                    requireText(wordNode.get("translation"), "newWords[" + i + "].translation", 500)));
+        }
+        return java.util.List.copyOf(newWords);
     }
 
     private JsonNode readObject(String rawJson) {

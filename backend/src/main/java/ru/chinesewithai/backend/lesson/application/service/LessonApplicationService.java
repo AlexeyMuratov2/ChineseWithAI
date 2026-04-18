@@ -42,6 +42,7 @@ public class LessonApplicationService
         implements CreateLessonFromJsonUseCase, GenerateLessonFromDraftUseCase, GetLessonUseCase {
 
     private static final String LESSON_GENERATOR_PROFILE_KEY = "lesson-generator:v1";
+    private static final String LESSON_GENERATOR_WORKFLOW_VARIANT_KEY = "draft-generation-with-review:v1";
     private static final String GENERATE_TASK = "Generate a lesson JSON from the provided lesson draft.";
 
     private final LessonRepository lessonRepository;
@@ -53,6 +54,7 @@ public class LessonApplicationService
     private final LessonGenerationProperties generationProperties;
     private final GetLessonDraftUseCase getLessonDraftUseCase;
     private final StartAgentSessionUseCase startAgentSessionUseCase;
+    private final LessonVocabularyTrackingService lessonVocabularyTrackingService;
     private final ObjectMapper objectMapper;
 
     public LessonApplicationService(
@@ -65,6 +67,7 @@ public class LessonApplicationService
             LessonGenerationProperties generationProperties,
             GetLessonDraftUseCase getLessonDraftUseCase,
             StartAgentSessionUseCase startAgentSessionUseCase,
+            LessonVocabularyTrackingService lessonVocabularyTrackingService,
             ObjectMapper objectMapper) {
         this.lessonRepository = lessonRepository;
         this.lessonModuleRepository = lessonModuleRepository;
@@ -75,6 +78,7 @@ public class LessonApplicationService
         this.generationProperties = generationProperties;
         this.getLessonDraftUseCase = getLessonDraftUseCase;
         this.startAgentSessionUseCase = startAgentSessionUseCase;
+        this.lessonVocabularyTrackingService = lessonVocabularyTrackingService;
         this.objectMapper = objectMapper;
     }
 
@@ -107,6 +111,7 @@ public class LessonApplicationService
                 LanguageTag.of(payload.translationLanguage()),
                 payload.contentJson(),
                 Instant.now()));
+        lessonVocabularyTrackingService.recordLessonVocabulary(lesson, payload.newWords());
         return toView(lesson);
     }
 
@@ -123,7 +128,8 @@ public class LessonApplicationService
                 resolveModelKey(command.modelKey()),
                 GENERATE_TASK,
                 writeJson(buildGenerationInput(draft, module)),
-                promptFactory.buildSystemPromptAppendix(module)));
+                promptFactory.buildSystemPromptAppendix(module),
+                LESSON_GENERATOR_WORKFLOW_VARIANT_KEY));
 
         if (!"COMPLETED".equals(session.status()) || session.finalOutputJson() == null) {
             throw new LessonGenerationFailedException(session.sessionId(), session.failureReason());
@@ -147,6 +153,7 @@ public class LessonApplicationService
                 LanguageTag.of(payload.translationLanguage()),
                 payload.contentJson(),
                 Instant.now()));
+        lessonVocabularyTrackingService.recordLessonVocabulary(lesson, payload.newWords());
         return toView(lesson);
     }
 

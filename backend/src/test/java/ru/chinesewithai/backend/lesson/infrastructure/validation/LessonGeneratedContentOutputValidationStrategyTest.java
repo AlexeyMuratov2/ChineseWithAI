@@ -36,6 +36,11 @@ class LessonGeneratedContentOutputValidationStrategyTest {
                     public Optional<LessonModule> findByModuleKey(String moduleKey) {
                         return Optional.of(module);
                     }
+
+                    @Override
+                    public List<LessonModule> findAllOrderByModuleKeyAsc() {
+                        return List.of();
+                    }
                 },
                 objectMapper);
         var rawOutput = """
