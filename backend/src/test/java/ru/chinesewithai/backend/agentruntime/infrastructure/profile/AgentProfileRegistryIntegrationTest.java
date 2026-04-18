@@ -49,6 +49,9 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         assertThat(lessonGeneratorProfile).isPresent();
         assertThat(lessonGeneratorProfile.orElseThrow().visible()).isFalse();
         assertThat(lessonGeneratorProfile.orElseThrow().allowedToolNames()).isEmpty();
+        assertThat(lessonGeneratorProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
+        assertThat(lessonGeneratorProfile.orElseThrow().outputValidationStrategyKey())
+                .isEqualTo("lesson-generated-content");
         assertThat(lessonGeneratorProfile.orElseThrow().outputContract().requiredFields())
                 .containsEntry("schemaVersion", OutputFieldType.NUMBER)
                 .containsEntry("moduleKey", OutputFieldType.STRING)
@@ -58,6 +61,8 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         assertThat(visibleProfiles).extracting(profile -> profile.profileKey()).containsExactly("assistant:v1");
         assertThat(visibleProfiles.getFirst().visible()).isTrue();
         assertThat(visibleProfiles.getFirst().allowedToolNames()).isEmpty();
+        assertThat(visibleProfiles.getFirst().autoRepairInvalidOutputEnabled()).isFalse();
+        assertThat(visibleProfiles.getFirst().outputValidationStrategyKey()).isNull();
         assertThat(visibleProfiles.getFirst().outputContract().requiredFields())
                 .containsEntry("answer", OutputFieldType.STRING);
     }

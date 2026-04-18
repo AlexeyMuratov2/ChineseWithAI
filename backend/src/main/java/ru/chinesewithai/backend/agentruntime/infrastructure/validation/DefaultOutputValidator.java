@@ -1,9 +1,11 @@
 package ru.chinesewithai.backend.agentruntime.infrastructure.validation;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Component;
+import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationIssue;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidator;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputContract;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
@@ -11,29 +13,35 @@ import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 @Component
 public class DefaultOutputValidator implements OutputValidator {
 
-    private final ObjectMapper objectMapper;
-
-    public DefaultOutputValidator(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    private static final String VALIDATOR_KEY = "output-contract";
 
     @Override
-    public void validate(String outputJson, OutputContract contract) {
-        var root = readJson(outputJson);
-        if (!root.isObject()) {
-            throw new IllegalArgumentException("Final output must be a JSON object");
-        }
+    public List<OutputValidationIssue> validate(JsonNode output, OutputContract contract) {
+        var issues = new ArrayList<OutputValidationIssue>();
 
         for (var entry : contract.requiredFields().entrySet()) {
-            var value = root.get(entry.getKey());
+            var fieldName = entry.getKey();
+            var value = output.get(fieldName);
             if (value == null || value.isNull()) {
-                throw new IllegalArgumentException("Missing required output field: " + entry.getKey());
+                issues.add(new OutputValidationIssue(
+                        VALIDATOR_KEY,
+                        "missing_field",
+                        fieldName,
+                        entry.getValue().name().toLowerCase(Locale.ROOT),
+                        "missing",
+                        "Missing required output field: " + fieldName));
+                continue;
             }
-            validateType(entry.getKey(), value, entry.getValue());
+            var issue = validateType(fieldName, value, entry.getValue());
+            if (issue != null) {
+                issues.add(issue);
+            }
         }
+
+        return List.copyOf(issues);
     }
 
-    private void validateType(String fieldName, JsonNode value, OutputFieldType type) {
+    private OutputValidationIssue validateType(String fieldName, JsonNode value, OutputFieldType type) {
         boolean valid = switch (type) {
             case STRING -> value.isTextual();
             case NUMBER -> value.isNumber();
@@ -42,16 +50,40 @@ public class DefaultOutputValidator implements OutputValidator {
             case ARRAY -> value.isArray();
         };
 
-        if (!valid) {
-            throw new IllegalArgumentException("Output field has invalid type: " + fieldName);
+        if (valid) {
+            return null;
         }
+        return new OutputValidationIssue(
+                VALIDATOR_KEY,
+                "invalid_type",
+                fieldName,
+                type.name().toLowerCase(Locale.ROOT),
+                describeNodeType(value),
+                "Output field has invalid type: " + fieldName);
     }
 
-    private JsonNode readJson(String rawJson) {
-        try {
-            return objectMapper.readTree(rawJson);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Final output must be valid JSON", ex);
+    private String describeNodeType(JsonNode value) {
+        if (value == null) {
+            return "missing";
         }
+        if (value.isTextual()) {
+            return "string";
+        }
+        if (value.isNumber()) {
+            return "number";
+        }
+        if (value.isBoolean()) {
+            return "boolean";
+        }
+        if (value.isObject()) {
+            return "object";
+        }
+        if (value.isArray()) {
+            return "array";
+        }
+        if (value.isNull()) {
+            return "null";
+        }
+        return value.getNodeType().name().toLowerCase(Locale.ROOT);
     }
 }

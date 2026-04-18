@@ -196,6 +196,8 @@ class DeepSeekModelGatewayTest {
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
                 new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                false,
+                null,
                 true);
         var session = AgentSession.createNew(
                 java.util.UUID.randomUUID(),

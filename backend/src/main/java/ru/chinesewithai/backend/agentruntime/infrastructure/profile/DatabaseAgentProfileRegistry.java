@@ -17,6 +17,7 @@ import ru.chinesewithai.backend.agentruntime.domain.model.MemoryPolicy;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputContract;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 import ru.chinesewithai.backend.agentruntime.infrastructure.context.AgentContextBuilderCatalog;
+import ru.chinesewithai.backend.agentruntime.infrastructure.validation.OutputValidationStrategyCatalog;
 
 @Repository
 public class DatabaseAgentProfileRegistry implements AgentProfileRegistry {
@@ -27,16 +28,19 @@ public class DatabaseAgentProfileRegistry implements AgentProfileRegistry {
     private final ObjectMapper objectMapper;
     private final AgentContextBuilderCatalog contextBuilderCatalog;
     private final ToolRegistry toolRegistry;
+    private final OutputValidationStrategyCatalog outputValidationStrategyCatalog;
 
     public DatabaseAgentProfileRegistry(
             SpringDataAgentProfileJpaRepository repository,
             ObjectMapper objectMapper,
             AgentContextBuilderCatalog contextBuilderCatalog,
-            ToolRegistry toolRegistry) {
+            ToolRegistry toolRegistry,
+            OutputValidationStrategyCatalog outputValidationStrategyCatalog) {
         this.repository = repository;
         this.objectMapper = objectMapper;
         this.contextBuilderCatalog = contextBuilderCatalog;
         this.toolRegistry = toolRegistry;
+        this.outputValidationStrategyCatalog = outputValidationStrategyCatalog;
     }
 
     @Override
@@ -62,6 +66,8 @@ public class DatabaseAgentProfileRegistry implements AgentProfileRegistry {
                     parseExecutionPolicy(entity.getExecutionPolicyJson()),
                     parseMemoryPolicy(entity.getMemoryPolicyJson()),
                     parseOutputContract(entity.getOutputContractJson()),
+                    entity.isAutoRepairInvalidOutputEnabled(),
+                    entity.getOutputValidationStrategyKey(),
                     entity.isVisible());
             validateRuntimeBindings(profile);
             return profile;
@@ -100,6 +106,12 @@ public class DatabaseAgentProfileRegistry implements AgentProfileRegistry {
                 throw new AgentProfileConfigurationException(
                         "Profile references unknown tool: " + toolName);
             }
+        }
+        if (profile.outputValidationStrategyKey() != null
+                && !outputValidationStrategyCatalog.contains(profile.outputValidationStrategyKey())) {
+            throw new AgentProfileConfigurationException(
+                    "Profile references unknown output validation strategy: "
+                            + profile.outputValidationStrategyKey());
         }
     }
 

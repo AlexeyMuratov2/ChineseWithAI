@@ -126,6 +126,29 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void generateLessonFromDraftRepairsInvalidAgentOutputAndCreatesLesson() throws Exception {
+        register("lesson_repair", "StrongPass123!", "Lesson Repair");
+        var token = login("lesson_repair", "StrongPass123!");
+        var draftId = createDraftWithSingleTextSource(
+                token, "Repairable output", "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]");
+
+        var generatePayload = objectMapper.writeValueAsString(Map.of(
+                "draftId", draftId,
+                "moduleKey", "TestModule",
+                "modelKey", "fake-model"));
+
+        mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(generatePayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("TestModule"))
+                .andExpect(jsonPath("$.generatorSessionId").isNotEmpty())
+                .andExpect(jsonPath("$.content.sections[0].type").value("word_usage"))
+                .andExpect(jsonPath("$.content.sections[1].type").value("reading"));
+    }
+
+    @Test
     void generateRejectsMissingAndUnknownModuleKey() throws Exception {
         register("lesson_missing_module", "StrongPass123!", "Lesson Missing Module");
         var token = login("lesson_missing_module", "StrongPass123!");

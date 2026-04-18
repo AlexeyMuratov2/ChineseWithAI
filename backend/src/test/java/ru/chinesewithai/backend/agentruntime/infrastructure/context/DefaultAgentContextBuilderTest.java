@@ -32,6 +32,8 @@ class DefaultAgentContextBuilderTest {
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
                 new OutputContract(Map.of("title", OutputFieldType.STRING)),
+                false,
+                null,
                 false);
         var session = AgentSession.createNew(
                 UUID.randomUUID(),

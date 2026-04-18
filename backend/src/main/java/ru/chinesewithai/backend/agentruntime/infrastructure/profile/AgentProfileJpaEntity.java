@@ -38,6 +38,12 @@ public class AgentProfileJpaEntity {
     @Column(name = "output_contract_json", nullable = false)
     private String outputContractJson;
 
+    @Column(name = "auto_repair_invalid_output_enabled", nullable = false)
+    private boolean autoRepairInvalidOutputEnabled;
+
+    @Column(name = "output_validation_strategy_key", length = 120)
+    private String outputValidationStrategyKey;
+
     @Column(name = "is_visible", nullable = false)
     private boolean visible;
 
@@ -83,6 +89,14 @@ public class AgentProfileJpaEntity {
 
     public String getOutputContractJson() {
         return outputContractJson;
+    }
+
+    public boolean isAutoRepairInvalidOutputEnabled() {
+        return autoRepairInvalidOutputEnabled;
+    }
+
+    public String getOutputValidationStrategyKey() {
+        return outputValidationStrategyKey;
     }
 
     public boolean isVisible() {

@@ -23,7 +23,7 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
     private DataSource dataSource;
 
     @Test
-    void v7BackfillsLegacySessionModelTaskAddsPromptAppendixAndSeedsHiddenProfiles() throws Exception {
+    void latestMigrationBackfillsLegacySessionModelTaskAndAddsOutputRepairSettings() throws Exception {
         var schema = "agentruntime_v7_backfill_test";
         recreateSchema(schema);
 
@@ -67,16 +67,30 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement();
                 ResultSet profileRs = statement.executeQuery(
-                        "SELECT profile_key, is_visible FROM " + schema + ".agent_profiles ORDER BY profile_key")) {
+                        "SELECT profile_key, is_visible, auto_repair_invalid_output_enabled, output_validation_strategy_key "
+                                + "FROM "
+                                + schema
+                                + ".agent_profiles ORDER BY profile_key")) {
             assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("assistant:v1");
             assertThat(profileRs.getBoolean("is_visible")).isTrue();
+            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isFalse();
+            assertThat(profileRs.getString("output_validation_strategy_key")).isNull();
             assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("lesson-generator:v1");
             assertThat(profileRs.getBoolean("is_visible")).isFalse();
+            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();
+            assertThat(profileRs.getString("output_validation_strategy_key")).isEqualTo("lesson-generated-content");
             assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("test-agent:v1");
             assertThat(profileRs.getBoolean("is_visible")).isFalse();
+            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isFalse();
+            assertThat(profileRs.getString("output_validation_strategy_key")).isNull();
+        }
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO " + schema + ".agent_steps (id, session_id, step_index, step_type, payload_json, created_at) "
+                    + "VALUES ('" + UUID.randomUUID() + "', '" + sessionId + "', 0, 'OUTPUT_VALIDATION_FAILED', '{}', NOW())");
         }
     }
 

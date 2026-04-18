@@ -20,6 +20,8 @@ public class FakeModelGateway implements AgentModelGateway {
     private static final String STATIC_TOOL_NAME = "get_static_test_data";
     private static final String LESSON_GENERATOR_PROFILE_KEY = "lesson-generator:v1";
     private static final String INVALID_OUTPUT_MARKER = "[[INVALID_LESSON_OUTPUT]]";
+    private static final String REPAIRABLE_INVALID_OUTPUT_MARKER = "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]";
+    private static final String REPAIR_PROMPT_MARKER = "The previous final JSON response was rejected";
 
     private final ObjectMapper objectMapper;
 
@@ -77,9 +79,23 @@ public class FakeModelGateway implements AgentModelGateway {
         var sourceText = draft.path("sources").isArray() && !draft.path("sources").isEmpty()
                 ? draft.path("sources").get(0).path("textContent").asText("")
                 : "";
+        var isRepairAttempt = request.messages().stream()
+                .anyMatch(message -> message.role() == AgentModelMessageRole.USER
+                        && message.content() != null
+                        && message.content().contains(REPAIR_PROMPT_MARKER));
 
         final String finalOutput;
         if (sourceText.contains(INVALID_OUTPUT_MARKER)) {
+            finalOutput = writeJson(Map.of(
+                    "schemaVersion", 1,
+                    "moduleKey", "TestModule",
+                    "title", title,
+                    "studyLanguage", "zh",
+                    "explanationLanguage", explanationLanguage,
+                    "translationLanguage", translationLanguage,
+                    "newWords", List.of(),
+                    "sections", List.of(Map.of("type", "reading", "title", "Broken"))));
+        } else if (sourceText.contains(REPAIRABLE_INVALID_OUTPUT_MARKER) && !isRepairAttempt) {
             finalOutput = writeJson(Map.of(
                     "schemaVersion", 1,
                     "moduleKey", "TestModule",
