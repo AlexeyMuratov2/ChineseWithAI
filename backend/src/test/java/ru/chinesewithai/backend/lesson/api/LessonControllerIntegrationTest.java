@@ -143,6 +143,7 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.moduleKey").value("TestModule"))
                 .andExpect(jsonPath("$.generatorSessionId").isNotEmpty())
+                .andExpect(jsonPath("$.content.reviewWords").isArray())
                 .andExpect(jsonPath("$.content.sections[0].type").value("word_usage"))
                 .andExpect(jsonPath("$.content.sections[1].type").value("reading"));
     }
@@ -166,6 +167,7 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.moduleKey").value("TestModule"))
                 .andExpect(jsonPath("$.generatorSessionId").isNotEmpty())
+                .andExpect(jsonPath("$.content.reviewWords").isArray())
                 .andExpect(jsonPath("$.content.sections[0].type").value("word_usage"))
                 .andExpect(jsonPath("$.content.sections[1].type").value("reading"));
     }
@@ -303,6 +305,11 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         var generatedLesson = objectMapper.readTree(secondGenerateResponse);
+        var reviewWordTranslations = new java.util.ArrayList<String>();
+        generatedLesson.path("content").path("reviewWords").forEach(node -> {
+            reviewWordTranslations.add(node.path("translation").asText());
+        });
+        assertThat(reviewWordTranslations).containsExactlyInAnyOrder("to know", "to study");
         var generatorSessionId = UUID.fromString(generatedLesson.get("generatorSessionId").asText());
         var lessonId = UUID.fromString(generatedLesson.get("id").asText());
 

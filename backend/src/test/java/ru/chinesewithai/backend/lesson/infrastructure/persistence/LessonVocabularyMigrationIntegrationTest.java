@@ -98,6 +98,40 @@ class LessonVocabularyMigrationIntegrationTest extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void v11AddsReviewWordsToLessonGeneratorContract() throws Exception {
+        var schema = "lesson_v11_schema_test";
+        recreateSchema(schema);
+
+        Flyway.configure()
+                .dataSource(dataSource)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .locations("classpath:db/migration")
+                .target("10")
+                .load()
+                .migrate();
+
+        Flyway.configure()
+                .dataSource(dataSource)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .locations("classpath:db/migration")
+                .load()
+                .migrate();
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT output_contract_json, system_prompt FROM "
+                            + schema
+                            + ".agent_profiles WHERE profile_key = 'lesson-generator:v1'")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString("output_contract_json")).contains("\"reviewWords\":\"array\"");
+                assertThat(rs.getString("system_prompt")).contains("reviewWords");
+            }
+        }
+    }
+
     private void recreateSchema(String schema) throws Exception {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
