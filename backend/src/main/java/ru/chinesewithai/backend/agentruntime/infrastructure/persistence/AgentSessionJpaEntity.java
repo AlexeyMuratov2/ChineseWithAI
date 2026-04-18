@@ -27,6 +27,9 @@ public class AgentSessionJpaEntity {
     @Column(name = "task", nullable = false)
     private String task;
 
+    @Column(name = "system_prompt_appendix")
+    private String systemPromptAppendix;
+
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 
@@ -59,6 +62,7 @@ public class AgentSessionJpaEntity {
             String profileKey,
             String modelKey,
             String task,
+            String systemPromptAppendix,
             String status,
             String inputJson,
             String finalOutputJson,
@@ -72,6 +76,7 @@ public class AgentSessionJpaEntity {
         this.profileKey = profileKey;
         this.modelKey = modelKey;
         this.task = task;
+        this.systemPromptAppendix = systemPromptAppendix;
         this.status = status;
         this.inputJson = inputJson;
         this.finalOutputJson = finalOutputJson;
@@ -100,6 +105,10 @@ public class AgentSessionJpaEntity {
 
     public String getTask() {
         return task;
+    }
+
+    public String getSystemPromptAppendix() {
+        return systemPromptAppendix;
     }
 
     public String getStatus() {

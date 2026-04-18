@@ -224,7 +224,7 @@ public class LessonDraftApplicationService
         var sourceViews = draft.sources().stream()
                 .map(source -> new LessonDraftSourceView(
                         source.id().value(),
-                        source.type(),
+                        source.type().name(),
                         source.position(),
                         source.textContent(),
                         source.documentFileId(),

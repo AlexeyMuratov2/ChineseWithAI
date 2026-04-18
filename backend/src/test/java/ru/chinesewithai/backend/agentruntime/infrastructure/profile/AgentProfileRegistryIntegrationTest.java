@@ -33,6 +33,7 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
     @Test
     void seededProfilesLoadWithVisibilityAndParsedPolicies() {
         var hiddenProfile = agentProfileRegistry.findByProfileKey("test-agent:v1");
+        var lessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:v1");
         var visibleProfiles = agentProfileRegistry.findVisibleProfiles();
 
         assertThat(hiddenProfile).isPresent();
@@ -44,6 +45,15 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         assertThat(hiddenProfile.orElseThrow().outputContract().requiredFields())
                 .containsEntry("summary", OutputFieldType.STRING)
                 .containsEntry("toolMessage", OutputFieldType.STRING);
+
+        assertThat(lessonGeneratorProfile).isPresent();
+        assertThat(lessonGeneratorProfile.orElseThrow().visible()).isFalse();
+        assertThat(lessonGeneratorProfile.orElseThrow().allowedToolNames()).isEmpty();
+        assertThat(lessonGeneratorProfile.orElseThrow().outputContract().requiredFields())
+                .containsEntry("schemaVersion", OutputFieldType.NUMBER)
+                .containsEntry("moduleKey", OutputFieldType.STRING)
+                .containsEntry("newWords", OutputFieldType.ARRAY)
+                .containsEntry("sections", OutputFieldType.ARRAY);
 
         assertThat(visibleProfiles).extracting(profile -> profile.profileKey()).containsExactly("assistant:v1");
         assertThat(visibleProfiles.getFirst().visible()).isTrue();

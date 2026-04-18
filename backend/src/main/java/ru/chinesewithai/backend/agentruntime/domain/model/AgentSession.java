@@ -11,6 +11,7 @@ public final class AgentSession {
     private final String profileKey;
     private final String modelKey;
     private final String task;
+    private final String systemPromptAppendix;
     private final AgentSessionStatus status;
     private final String inputJson;
     private final String finalOutputJson;
@@ -26,6 +27,7 @@ public final class AgentSession {
             String profileKey,
             String modelKey,
             String task,
+            String systemPromptAppendix,
             AgentSessionStatus status,
             String inputJson,
             String finalOutputJson,
@@ -39,6 +41,7 @@ public final class AgentSession {
         this.profileKey = requireText(profileKey, "profileKey");
         this.modelKey = requireText(modelKey, "modelKey");
         this.task = requireText(task, "task");
+        this.systemPromptAppendix = normalizeOptional(systemPromptAppendix);
         this.status = Objects.requireNonNull(status, "status must not be null");
         this.inputJson = normalizeOptional(inputJson);
         this.finalOutputJson = normalizeOptional(finalOutputJson);
@@ -51,6 +54,17 @@ public final class AgentSession {
 
     public static AgentSession createNew(
             UUID ownerId, String profileKey, String modelKey, String task, String inputJson, Instant now) {
+        return createNew(ownerId, profileKey, modelKey, task, inputJson, null, now);
+    }
+
+    public static AgentSession createNew(
+            UUID ownerId,
+            String profileKey,
+            String modelKey,
+            String task,
+            String inputJson,
+            String systemPromptAppendix,
+            Instant now) {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 UUID.randomUUID(),
@@ -58,6 +72,7 @@ public final class AgentSession {
                 profileKey,
                 modelKey,
                 task,
+                systemPromptAppendix,
                 AgentSessionStatus.CREATED,
                 inputJson,
                 null,
@@ -74,6 +89,7 @@ public final class AgentSession {
             String profileKey,
             String modelKey,
             String task,
+            String systemPromptAppendix,
             AgentSessionStatus status,
             String inputJson,
             String finalOutputJson,
@@ -88,6 +104,7 @@ public final class AgentSession {
                 profileKey,
                 modelKey,
                 task,
+                systemPromptAppendix,
                 status,
                 inputJson,
                 finalOutputJson,
@@ -106,6 +123,7 @@ public final class AgentSession {
                 profileKey,
                 modelKey,
                 task,
+                systemPromptAppendix,
                 AgentSessionStatus.RUNNING,
                 inputJson,
                 finalOutputJson,
@@ -124,6 +142,7 @@ public final class AgentSession {
                 profileKey,
                 modelKey,
                 task,
+                systemPromptAppendix,
                 AgentSessionStatus.COMPLETED,
                 inputJson,
                 finalOutputJson,
@@ -142,6 +161,7 @@ public final class AgentSession {
                 profileKey,
                 modelKey,
                 task,
+                systemPromptAppendix,
                 AgentSessionStatus.FAILED,
                 inputJson,
                 null,
@@ -170,6 +190,10 @@ public final class AgentSession {
 
     public String task() {
         return task;
+    }
+
+    public String systemPromptAppendix() {
+        return systemPromptAppendix;
     }
 
     public AgentSessionStatus status() {

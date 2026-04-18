@@ -45,6 +45,9 @@ public class DefaultAgentContextBuilder implements AgentContextBuilder {
     private String buildSystemPrompt(AgentContextBuildRequest request) {
         var joiner = new StringJoiner("\n\n");
         joiner.add(request.profile().systemPrompt());
+        if (request.session().systemPromptAppendix() != null) {
+            joiner.add(request.session().systemPromptAppendix());
+        }
         joiner.add("Return the final answer as a valid JSON object without markdown fences.");
         joiner.add("Required output fields:\n" + describeOutputContract(request.profile().outputContract().requiredFields()));
         if (!request.profile().allowedToolNames().isEmpty()) {

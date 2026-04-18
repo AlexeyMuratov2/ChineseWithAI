@@ -60,7 +60,13 @@ public class AgentRuntimeApplicationService
                 .orElseThrow(() -> new AgentModelNotFoundException(command.modelKey()));
         var ownerId = currentAgentOwnerProvider.getCurrentOwnerId();
         var session = agentSessionRepository.save(AgentSession.createNew(
-                ownerId, profile.profileKey(), model.modelKey(), command.task(), command.inputJson(), Instant.now()));
+                ownerId,
+                profile.profileKey(),
+                model.modelKey(),
+                command.task(),
+                command.inputJson(),
+                command.systemPromptAppendix(),
+                Instant.now()));
         return toView(orchestrator.execute(profile, model, session));
     }
 
@@ -93,7 +99,7 @@ public class AgentRuntimeApplicationService
     private AgentSessionView toView(AgentSession session) {
         var steps = agentStepRepository.findBySessionIdOrderByStepIndex(session.id()).stream()
                 .map(step -> new AgentStepView(
-                        step.id(), step.stepIndex(), step.type(), step.payloadJson(), step.createdAt()))
+                        step.id(), step.stepIndex(), step.type().name(), step.payloadJson(), step.createdAt()))
                 .toList();
 
         return new AgentSessionView(
@@ -102,7 +108,7 @@ public class AgentRuntimeApplicationService
                 session.profileKey(),
                 session.modelKey(),
                 session.task(),
-                session.status(),
+                session.status().name(),
                 session.inputJson(),
                 session.finalOutputJson(),
                 session.failureReason(),

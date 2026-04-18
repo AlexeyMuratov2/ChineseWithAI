@@ -23,8 +23,8 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
     private DataSource dataSource;
 
     @Test
-    void v6BackfillsLegacySessionModelTaskAndProfileVisibility() throws Exception {
-        var schema = "agentruntime_v6_backfill_test";
+    void v7BackfillsLegacySessionModelTaskAddsPromptAppendixAndSeedsHiddenProfiles() throws Exception {
+        var schema = "agentruntime_v7_backfill_test";
         recreateSchema(schema);
 
         Flyway.configure()
@@ -55,12 +55,13 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
 
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement();
-                ResultSet sessionRs = statement.executeQuery(
-                        "SELECT model_key, task, input_json FROM " + schema + ".agent_sessions WHERE id = '" + sessionId + "'")) {
+                ResultSet sessionRs = statement.executeQuery("SELECT model_key, task, input_json, system_prompt_appendix FROM "
+                        + schema + ".agent_sessions WHERE id = '" + sessionId + "'")) {
             assertThat(sessionRs.next()).isTrue();
             assertThat(sessionRs.getString("model_key")).isEqualTo("fake-model");
             assertThat(sessionRs.getString("task")).isEqualTo("{\"objective\":\"legacy\"}");
             assertThat(sessionRs.getString("input_json")).isEqualTo("{\"objective\":\"legacy\"}");
+            assertThat(sessionRs.getString("system_prompt_appendix")).isNull();
         }
 
         try (Connection connection = dataSource.getConnection();
@@ -70,6 +71,9 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
             assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("assistant:v1");
             assertThat(profileRs.getBoolean("is_visible")).isTrue();
+            assertThat(profileRs.next()).isTrue();
+            assertThat(profileRs.getString("profile_key")).isEqualTo("lesson-generator:v1");
+            assertThat(profileRs.getBoolean("is_visible")).isFalse();
             assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("test-agent:v1");
             assertThat(profileRs.getBoolean("is_visible")).isFalse();

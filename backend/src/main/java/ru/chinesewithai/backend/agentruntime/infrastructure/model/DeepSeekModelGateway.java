@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,6 +27,7 @@ public class DeepSeekModelGateway implements AgentModelGateway {
 
     static final String PROVIDER_KEY = "deepseek";
     static final String MODEL_KEY = "deepseek-chat";
+    private static final Logger log = LoggerFactory.getLogger(DeepSeekModelGateway.class);
 
     private static final AgentModelDescriptor MODEL_DESCRIPTOR =
             new AgentModelDescriptor(MODEL_KEY, "DeepSeek Chat", PROVIDER_KEY, true);
@@ -40,6 +43,13 @@ public class DeepSeekModelGateway implements AgentModelGateway {
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + safeApiKey(properties.apiKey()))
                 .build();
         this.objectMapper = objectMapper;
+
+        if (isApiKeyMissing()) {
+            log.warn(
+                    "DeepSeek model gateway is disabled because app.agentruntime.deepseek.api-key / DEEPSEEK_API_KEY is blank");
+        } else {
+            log.info("DeepSeek model gateway is enabled with base URL {}", properties.baseUrl());
+        }
     }
 
     @Override
@@ -49,7 +59,7 @@ public class DeepSeekModelGateway implements AgentModelGateway {
 
     @Override
     public List<AgentModelDescriptor> supportedModels() {
-        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+        if (isApiKeyMissing()) {
             return List.of();
         }
         return List.of(MODEL_DESCRIPTOR);
@@ -57,7 +67,7 @@ public class DeepSeekModelGateway implements AgentModelGateway {
 
     @Override
     public AgentModelResponse generate(AgentModelRequest request) {
-        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+        if (isApiKeyMissing()) {
             throw new IllegalStateException("DeepSeek API key is not configured");
         }
 
@@ -200,6 +210,10 @@ public class DeepSeekModelGateway implements AgentModelGateway {
 
     private static String safeApiKey(String apiKey) {
         return apiKey == null ? "" : apiKey;
+    }
+
+    private boolean isApiKeyMissing() {
+        return properties.apiKey() == null || properties.apiKey().isBlank();
     }
 
     private static String requireText(String value, String fieldName) {

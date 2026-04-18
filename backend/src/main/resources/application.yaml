@@ -37,7 +37,10 @@ app:
   agentruntime:
     deepseek:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-      api-key: ${DEEPSEEK_API_KEY:}
+      api-key: ${DEEPSEEK_API_KEY:sk-052e84d9015f47b5b5525a21bf36fc0d}
+  lesson:
+    generation:
+      default-model-key: ${CWA_LESSON_GENERATION_DEFAULT_MODEL_KEY:deepseek-chat}
   security:
     jwt:
       issuer: ${JWT_ISSUER:chinesewithai-backend}

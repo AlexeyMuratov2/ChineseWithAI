@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import ru.chinesewithai.backend.agentruntime.domain.model.AgentSessionStatus;
 
 public record AgentSessionResponse(
         UUID sessionId,
@@ -12,7 +11,7 @@ public record AgentSessionResponse(
         String profileKey,
         String modelKey,
         String task,
-        AgentSessionStatus status,
+        String status,
         JsonNode input,
         JsonNode finalOutput,
         String failureReason,

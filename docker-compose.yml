@@ -57,6 +57,8 @@ services:
       CWA_S3_SECRET_KEY: minioadmin
       CWA_S3_BUCKET: cwa-dev-files
       CWA_S3_AUTO_CREATE_BUCKET: "true"
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       SPRING_AI_OPENAI_API_KEY: ${SPRING_AI_OPENAI_API_KEY:-change-me}
 
 volumes:
