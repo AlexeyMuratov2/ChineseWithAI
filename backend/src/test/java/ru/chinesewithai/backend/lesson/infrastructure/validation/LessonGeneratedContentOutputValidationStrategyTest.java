@@ -6,15 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategyRequest;
-import ru.chinesewithai.backend.agentruntime.domain.model.AgentProfile;
-import ru.chinesewithai.backend.agentruntime.domain.model.AgentSession;
-import ru.chinesewithai.backend.agentruntime.domain.model.ExecutionPolicy;
-import ru.chinesewithai.backend.agentruntime.domain.model.MemoryPolicy;
-import ru.chinesewithai.backend.agentruntime.domain.model.OutputContract;
-import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonModuleRepository;
 import ru.chinesewithai.backend.lesson.application.validation.LessonContentValidator;
 import ru.chinesewithai.backend.lesson.application.validation.LessonModuleStrategyCatalog;
@@ -74,14 +67,8 @@ class LessonGeneratedContentOutputValidationStrategyTest {
                 """;
 
         var issues = strategy.validate(new OutputValidationStrategyRequest(
-                profile(),
-                AgentSession.createNew(
-                        UUID.randomUUID(),
-                        "lesson-generator:v1",
-                        "fake-model",
-                        "Generate lesson",
-                        "{\"moduleKey\":\"TestModule\"}",
-                        Instant.now()),
+                "lesson-generator:v1",
+                "{\"moduleKey\":\"TestModule\"}",
                 objectMapper.readTree(rawOutput),
                 rawOutput));
 
@@ -89,28 +76,5 @@ class LessonGeneratedContentOutputValidationStrategyTest {
         assertThat(issues.getFirst().path()).isEqualTo("sections[1].text");
         assertThat(issues.getFirst().code()).isEqualTo("invalid_type");
         assertThat(issues.getFirst().message()).contains("sections[1].text");
-    }
-
-    private AgentProfile profile() {
-        return new AgentProfile(
-                "lesson-generator:v1",
-                "Lesson Generator",
-                "Generate lesson JSON",
-                "default",
-                List.of(),
-                new ExecutionPolicy(4),
-                new MemoryPolicy(true, 8),
-                new OutputContract(java.util.Map.of(
-                        "schemaVersion", OutputFieldType.NUMBER,
-                        "moduleKey", OutputFieldType.STRING,
-                        "title", OutputFieldType.STRING,
-                        "studyLanguage", OutputFieldType.STRING,
-                        "explanationLanguage", OutputFieldType.STRING,
-                        "translationLanguage", OutputFieldType.STRING,
-                        "newWords", OutputFieldType.ARRAY,
-                        "sections", OutputFieldType.ARRAY)),
-                true,
-                LessonGeneratedContentOutputValidationStrategy.STRATEGY_KEY,
-                false);
     }
 }

@@ -71,7 +71,12 @@ public class AgentRuntimeController {
             throw new IllegalArgumentException("input must be a JSON object");
         }
         var view = startAgentSessionUseCase.startSession(new StartAgentSessionCommand(
-                request.profileKey(), request.modelKey(), request.task(), writeJsonOrNull(request.input())));
+                request.profileKey(),
+                request.modelKey(),
+                request.task(),
+                writeJsonOrNull(request.input()),
+                null,
+                request.workflowVariantKey()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(view));
     }
 
@@ -91,6 +96,7 @@ public class AgentRuntimeController {
                 view.profileKey(),
                 view.modelKey(),
                 view.task(),
+                view.workflowVariantKey(),
                 view.status(),
                 readJsonOrNull(view.inputJson()),
                 readJsonOrNull(view.finalOutputJson()),

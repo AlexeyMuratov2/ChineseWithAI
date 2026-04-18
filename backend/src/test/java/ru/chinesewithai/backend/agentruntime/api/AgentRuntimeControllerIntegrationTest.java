@@ -45,7 +45,7 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void startRequiresAuthentication() throws Exception {
         var payload = objectMapper.writeValueAsString(new StartPayload(
-                "test-agent:v1", "fake-model", "Run a smoke test", Map.of("objective", "smoke-test")));
+                "test-agent:v1", "fake-model", "Run a smoke test", Map.of("objective", "smoke-test"), null));
 
         mockMvc.perform(post("/api/v1/agent-runtime/sessions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -59,7 +59,7 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
         var ownerToken = login("runtime_owner", "StrongPass123!");
 
         var startPayload = objectMapper.writeValueAsString(new StartPayload(
-                "test-agent:v1", "fake-model", "Run a smoke test", Map.of("objective", "smoke-test")));
+                "test-agent:v1", "fake-model", "Run a smoke test", Map.of("objective", "smoke-test"), null));
 
         var startResponse = mockMvc.perform(post("/api/v1/agent-runtime/sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken))
@@ -73,9 +73,11 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.finalOutput.summary").value("Fake agent completed successfully"))
                 .andExpect(jsonPath("$.finalOutput.toolMessage").value("hello-from-static-tool"))
-                .andExpect(jsonPath("$.steps.length()").value(11))
+                .andExpect(jsonPath("$.steps.length()").value(13))
                 .andExpect(jsonPath("$.steps[0].type").value("SESSION_CREATED"))
-                .andExpect(jsonPath("$.steps[10].type").value("SESSION_COMPLETED"))
+                .andExpect(jsonPath("$.steps[1].type").value("PRE_GENERATION_STARTED"))
+                .andExpect(jsonPath("$.steps[2].type").value("PRE_GENERATION_COMPLETED"))
+                .andExpect(jsonPath("$.steps[12].type").value("SESSION_COMPLETED"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -89,10 +91,10 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.modelKey").value("fake-model"))
                 .andExpect(jsonPath("$.task").value("Run a smoke test"))
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.steps.length()").value(11));
+                .andExpect(jsonPath("$.steps.length()").value(13));
 
         assertCount("SELECT COUNT(*) FROM agent_sessions", 1);
-        assertCount("SELECT COUNT(*) FROM agent_steps", 11);
+        assertCount("SELECT COUNT(*) FROM agent_steps", 13);
         assertText("SELECT model_key FROM agent_sessions", "fake-model");
         assertText("SELECT task FROM agent_sessions", "Run a smoke test");
 
@@ -108,7 +110,7 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
         register("runtime_missing", "StrongPass123!", "Runtime Missing");
         var token = login("runtime_missing", "StrongPass123!");
         var payload = objectMapper.writeValueAsString(
-                new StartPayload("missing-profile", "fake-model", "Do x", Map.of("objective", "x")));
+                new StartPayload("missing-profile", "fake-model", "Do x", Map.of("objective", "x"), null));
 
         mockMvc.perform(post("/api/v1/agent-runtime/sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
@@ -122,13 +124,68 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
         register("runtime_missing_model", "StrongPass123!", "Runtime Missing Model");
         var token = login("runtime_missing_model", "StrongPass123!");
         var payload = objectMapper.writeValueAsString(
-                new StartPayload("test-agent:v1", "missing-model", "Do x", Map.of("objective", "x")));
+                new StartPayload("test-agent:v1", "missing-model", "Do x", Map.of("objective", "x"), null));
 
         mockMvc.perform(post("/api/v1/agent-runtime/sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void startWithWorkflowVariantRunsPreGenerationWorkflowAndReturnsVariantInTrace() throws Exception {
+        register("runtime_personalized", "StrongPass123!", "Alice Runtime");
+        var token = login("runtime_personalized", "StrongPass123!");
+        var payload = objectMapper.writeValueAsString(new StartPayload(
+                "test-agent:v1",
+                "fake-model",
+                "Run a personalized smoke test",
+                Map.of("objective", "smoke-test", "learnerLevel", "HSK2"),
+                "personalized-smoke"));
+
+        var startResponse = mockMvc.perform(post("/api/v1/agent-runtime/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.workflowVariantKey").value("personalized-smoke"))
+                .andExpect(jsonPath("$.finalOutput.seenDisplayName").value("Alice Runtime"))
+                .andExpect(jsonPath("$.finalOutput.seenLearnerLevel").value("HSK2"))
+                .andExpect(jsonPath("$.steps.length()").value(15))
+                .andExpect(jsonPath("$.steps[0].type").value("SESSION_CREATED"))
+                .andExpect(jsonPath("$.steps[1].type").value("PRE_GENERATION_STARTED"))
+                .andExpect(jsonPath("$.steps[2].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[3].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[4].type").value("PRE_GENERATION_COMPLETED"))
+                .andExpect(jsonPath("$.steps[5].type").value("CONTEXT_BUILT"))
+                .andExpect(jsonPath("$.steps[6].type").value("MODEL_REQUEST"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var sessionId = UUID.fromString(objectMapper.readTree(startResponse).get("sessionId").asText());
+
+        mockMvc.perform(get("/api/v1/agent-runtime/sessions/{sessionId}", sessionId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workflowVariantKey").value("personalized-smoke"))
+                .andExpect(jsonPath("$.finalOutput.seenDisplayName").value("Alice Runtime"))
+                .andExpect(jsonPath("$.finalOutput.seenLearnerLevel").value("HSK2"));
+    }
+
+    @Test
+    void startReturnsBadRequestForUnknownWorkflowVariant() throws Exception {
+        register("runtime_bad_variant", "StrongPass123!", "Bad Variant");
+        var token = login("runtime_bad_variant", "StrongPass123!");
+        var payload = objectMapper.writeValueAsString(new StartPayload(
+                "test-agent:v1", "fake-model", "Do x", Map.of("objective", "x"), "missing-variant"));
+
+        mockMvc.perform(post("/api/v1/agent-runtime/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
     }
 
     private void assertCount(String sql, int expected) {
@@ -165,5 +222,6 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
 
     private record LoginPayload(String username, String password) {}
 
-    private record StartPayload(String profileKey, String modelKey, String task, Map<String, Object> input) {}
+    private record StartPayload(
+            String profileKey, String modelKey, String task, Map<String, Object> input, String workflowVariantKey) {}
 }

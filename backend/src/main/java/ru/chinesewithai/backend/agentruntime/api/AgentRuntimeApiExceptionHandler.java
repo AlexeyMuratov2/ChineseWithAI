@@ -10,6 +10,7 @@ import ru.chinesewithai.backend.agentruntime.application.exception.AgentModelNot
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentProfileConfigurationException;
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentProfileNotFoundException;
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentSessionNotFoundException;
+import ru.chinesewithai.backend.agentruntime.application.exception.AgentWorkflowVariantNotFoundException;
 
 @RestControllerAdvice
 public class AgentRuntimeApiExceptionHandler {
@@ -27,6 +28,11 @@ public class AgentRuntimeApiExceptionHandler {
     @ExceptionHandler(AgentSessionNotFoundException.class)
     ProblemDetail handleSessionNotFound(AgentSessionNotFoundException ex, HttpServletRequest request) {
         return problem(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(AgentWorkflowVariantNotFoundException.class)
+    ProblemDetail handleWorkflowVariantNotFound(AgentWorkflowVariantNotFoundException ex, HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     @ExceptionHandler(AgentProfileConfigurationException.class)

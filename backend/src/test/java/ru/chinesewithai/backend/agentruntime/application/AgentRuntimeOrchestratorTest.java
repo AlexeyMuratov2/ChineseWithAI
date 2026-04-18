@@ -18,6 +18,8 @@ import ru.chinesewithai.backend.agentruntime.application.port.out.AgentModelRequ
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentModelResponse;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentSessionRepository;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentStepRepository;
+import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationWorkflow;
+import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationWorkflowRegistry;
 import ru.chinesewithai.backend.agentruntime.application.service.AgentRuntimeOrchestrator;
 import ru.chinesewithai.backend.agentruntime.application.service.FinalOutputValidationService;
 import ru.chinesewithai.backend.agentruntime.application.service.OutputRepairPromptFactory;
@@ -34,6 +36,8 @@ import ru.chinesewithai.backend.agentruntime.infrastructure.context.AgentContext
 import ru.chinesewithai.backend.agentruntime.infrastructure.context.DefaultAgentContextBuilder;
 import ru.chinesewithai.backend.agentruntime.infrastructure.model.AgentModelGatewayCatalog;
 import ru.chinesewithai.backend.agentruntime.infrastructure.model.FakeModelGateway;
+import ru.chinesewithai.backend.agentruntime.infrastructure.pregeneration.DefaultPreGenerationWorkflowRunner;
+import ru.chinesewithai.backend.agentruntime.infrastructure.pregeneration.SpringPreGenerationStepCatalog;
 import ru.chinesewithai.backend.agentruntime.infrastructure.tool.SpringToolRegistry;
 import ru.chinesewithai.backend.agentruntime.infrastructure.tool.StaticTestDataTool;
 import ru.chinesewithai.backend.agentruntime.infrastructure.validation.DefaultOutputValidator;
@@ -88,10 +92,12 @@ class AgentRuntimeOrchestratorTest {
                 .isEqualTo("hello-from-static-tool");
 
         var steps = stepRepository.findBySessionIdOrderByStepIndex(executed.id());
-        assertThat(steps).hasSize(11);
+        assertThat(steps).hasSize(13);
         assertThat(steps.stream().map(AgentStep::type).toList())
                 .containsExactly(
                         AgentStepType.SESSION_CREATED,
+                        AgentStepType.PRE_GENERATION_STARTED,
+                        AgentStepType.PRE_GENERATION_COMPLETED,
                         AgentStepType.CONTEXT_BUILT,
                         AgentStepType.MODEL_REQUEST,
                         AgentStepType.MODEL_RESPONSE,
@@ -147,6 +153,8 @@ class AgentRuntimeOrchestratorTest {
         assertThat(steps.stream().map(AgentStep::type).toList())
                 .containsExactly(
                         AgentStepType.SESSION_CREATED,
+                        AgentStepType.PRE_GENERATION_STARTED,
+                        AgentStepType.PRE_GENERATION_COMPLETED,
                         AgentStepType.CONTEXT_BUILT,
                         AgentStepType.MODEL_REQUEST,
                         AgentStepType.MODEL_RESPONSE,
@@ -196,6 +204,8 @@ class AgentRuntimeOrchestratorTest {
         assertThat(steps).extracting(AgentStep::type)
                 .containsExactly(
                         AgentStepType.SESSION_CREATED,
+                        AgentStepType.PRE_GENERATION_STARTED,
+                        AgentStepType.PRE_GENERATION_COMPLETED,
                         AgentStepType.CONTEXT_BUILT,
                         AgentStepType.MODEL_REQUEST,
                         AgentStepType.MODEL_RESPONSE,
@@ -264,12 +274,26 @@ class AgentRuntimeOrchestratorTest {
                 new AgentModelGatewayCatalog(gateways),
                 new AgentContextBuilderCatalog(List.of(new DefaultAgentContextBuilder(objectMapper))),
                 new SpringToolRegistry(tools),
+                new DefaultPreGenerationWorkflowRunner(new EmptyPreGenerationWorkflowRegistry(), new SpringPreGenerationStepCatalog(List.of())),
                 new FinalOutputValidationService(
                         objectMapper,
                         new DefaultOutputValidator(),
                         new OutputValidationStrategyCatalog(List.of())),
                 new OutputRepairPromptFactory(objectMapper),
                 objectMapper);
+    }
+
+    private static final class EmptyPreGenerationWorkflowRegistry implements PreGenerationWorkflowRegistry {
+
+        @Override
+        public Optional<PreGenerationWorkflow> findVariant(String profileKey, String workflowVariantKey) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<PreGenerationWorkflow> findDefault(String profileKey) {
+            return Optional.empty();
+        }
     }
 
     private static final class InvalidThenRepairableGateway implements AgentModelGateway {

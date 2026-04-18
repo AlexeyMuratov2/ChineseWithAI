@@ -12,6 +12,7 @@ public final class AgentSession {
     private final String modelKey;
     private final String task;
     private final String systemPromptAppendix;
+    private final String workflowVariantKey;
     private final AgentSessionStatus status;
     private final String inputJson;
     private final String finalOutputJson;
@@ -28,6 +29,7 @@ public final class AgentSession {
             String modelKey,
             String task,
             String systemPromptAppendix,
+            String workflowVariantKey,
             AgentSessionStatus status,
             String inputJson,
             String finalOutputJson,
@@ -42,6 +44,7 @@ public final class AgentSession {
         this.modelKey = requireText(modelKey, "modelKey");
         this.task = requireText(task, "task");
         this.systemPromptAppendix = normalizeOptional(systemPromptAppendix);
+        this.workflowVariantKey = normalizeOptional(workflowVariantKey);
         this.status = Objects.requireNonNull(status, "status must not be null");
         this.inputJson = normalizeOptional(inputJson);
         this.finalOutputJson = normalizeOptional(finalOutputJson);
@@ -54,7 +57,7 @@ public final class AgentSession {
 
     public static AgentSession createNew(
             UUID ownerId, String profileKey, String modelKey, String task, String inputJson, Instant now) {
-        return createNew(ownerId, profileKey, modelKey, task, inputJson, null, now);
+        return createNew(ownerId, profileKey, modelKey, task, inputJson, null, null, now);
     }
 
     public static AgentSession createNew(
@@ -65,6 +68,18 @@ public final class AgentSession {
             String inputJson,
             String systemPromptAppendix,
             Instant now) {
+        return createNew(ownerId, profileKey, modelKey, task, inputJson, systemPromptAppendix, null, now);
+    }
+
+    public static AgentSession createNew(
+            UUID ownerId,
+            String profileKey,
+            String modelKey,
+            String task,
+            String inputJson,
+            String systemPromptAppendix,
+            String workflowVariantKey,
+            Instant now) {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 UUID.randomUUID(),
@@ -73,6 +88,7 @@ public final class AgentSession {
                 modelKey,
                 task,
                 systemPromptAppendix,
+                workflowVariantKey,
                 AgentSessionStatus.CREATED,
                 inputJson,
                 null,
@@ -90,6 +106,7 @@ public final class AgentSession {
             String modelKey,
             String task,
             String systemPromptAppendix,
+            String workflowVariantKey,
             AgentSessionStatus status,
             String inputJson,
             String finalOutputJson,
@@ -105,6 +122,7 @@ public final class AgentSession {
                 modelKey,
                 task,
                 systemPromptAppendix,
+                workflowVariantKey,
                 status,
                 inputJson,
                 finalOutputJson,
@@ -124,6 +142,7 @@ public final class AgentSession {
                 modelKey,
                 task,
                 systemPromptAppendix,
+                workflowVariantKey,
                 AgentSessionStatus.RUNNING,
                 inputJson,
                 finalOutputJson,
@@ -143,6 +162,7 @@ public final class AgentSession {
                 modelKey,
                 task,
                 systemPromptAppendix,
+                workflowVariantKey,
                 AgentSessionStatus.COMPLETED,
                 inputJson,
                 finalOutputJson,
@@ -162,6 +182,7 @@ public final class AgentSession {
                 modelKey,
                 task,
                 systemPromptAppendix,
+                workflowVariantKey,
                 AgentSessionStatus.FAILED,
                 inputJson,
                 null,
@@ -194,6 +215,10 @@ public final class AgentSession {
 
     public String systemPromptAppendix() {
         return systemPromptAppendix;
+    }
+
+    public String workflowVariantKey() {
+        return workflowVariantKey;
     }
 
     public AgentSessionStatus status() {
@@ -236,9 +261,10 @@ public final class AgentSession {
     }
 
     private static String normalizeOptional(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null) {
             return null;
         }
-        return value;
+        var normalized = value.trim();
+        return normalized.isBlank() ? null : normalized;
     }
 }

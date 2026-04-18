@@ -58,7 +58,8 @@ public class FinalOutputValidationService {
         var issues = new ArrayList<>(outputValidator.validate(root, profile.outputContract()));
         if (profile.outputValidationStrategyKey() != null) {
             var strategy = strategyCatalog.getRequired(profile.outputValidationStrategyKey());
-            issues.addAll(strategy.validate(new OutputValidationStrategyRequest(profile, session, root, rawOutputJson)));
+            issues.addAll(strategy.validate(new OutputValidationStrategyRequest(
+                    profile.profileKey(), session.inputJson(), root, rawOutputJson)));
         }
         return new OutputValidationResult(issues);
     }

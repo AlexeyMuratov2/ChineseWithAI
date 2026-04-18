@@ -10,6 +10,7 @@ public record AgentSessionView(
         String profileKey,
         String modelKey,
         String task,
+        String workflowVariantKey,
         String status,
         String inputJson,
         String finalOutputJson,

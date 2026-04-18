@@ -22,6 +22,10 @@ public class FakeModelGateway implements AgentModelGateway {
     private static final String INVALID_OUTPUT_MARKER = "[[INVALID_LESSON_OUTPUT]]";
     private static final String REPAIRABLE_INVALID_OUTPUT_MARKER = "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]";
     private static final String REPAIR_PROMPT_MARKER = "The previous final JSON response was rejected";
+    private static final java.util.regex.Pattern DISPLAY_NAME_PATTERN =
+            java.util.regex.Pattern.compile("displayName:\\s*(.+)");
+    private static final java.util.regex.Pattern LEARNER_LEVEL_PATTERN =
+            java.util.regex.Pattern.compile("learnerLevel:\\s*(.+)");
 
     private final ObjectMapper objectMapper;
 
@@ -51,6 +55,8 @@ public class FakeModelGateway implements AgentModelGateway {
                 .findFirst()
                 .map(message -> readJson(message.content()).path("toolMessage").asText(null))
                 .orElse(null);
+        var seenDisplayName = extractFirstMatch(request, DISPLAY_NAME_PATTERN);
+        var seenLearnerLevel = extractFirstMatch(request, LEARNER_LEVEL_PATTERN);
 
         if (toolMessage == null) {
             var toolCall = new AgentToolCall("fake-tool-call-1", STATIC_TOOL_NAME, "{}");
@@ -63,9 +69,16 @@ public class FakeModelGateway implements AgentModelGateway {
             return AgentModelResponse.toolCalls(rawPayload, List.of(toolCall));
         }
 
-        var finalOutput = writeJson(Map.of(
-                "summary", "Fake agent completed successfully",
-                "toolMessage", toolMessage));
+        var finalOutputPayload = new java.util.LinkedHashMap<String, Object>();
+        finalOutputPayload.put("summary", "Fake agent completed successfully");
+        finalOutputPayload.put("toolMessage", toolMessage);
+        if (seenDisplayName != null) {
+            finalOutputPayload.put("seenDisplayName", seenDisplayName);
+        }
+        if (seenLearnerLevel != null) {
+            finalOutputPayload.put("seenLearnerLevel", seenLearnerLevel);
+        }
+        var finalOutput = writeJson(finalOutputPayload);
         var rawPayload = writeJson(Map.of("type", "FINAL_OUTPUT", "output", readJson(finalOutput)));
         return AgentModelResponse.finalOutput(rawPayload, finalOutput);
     }
@@ -156,5 +169,18 @@ public class FakeModelGateway implements AgentModelGateway {
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to serialize fake model payload", ex);
         }
+    }
+
+    private String extractFirstMatch(AgentModelRequest request, java.util.regex.Pattern pattern) {
+        for (var message : request.messages()) {
+            if (message.content() == null || message.content().isBlank()) {
+                continue;
+            }
+            var matcher = pattern.matcher(message.content());
+            if (matcher.find()) {
+                return matcher.group(1).trim();
+            }
+        }
+        return null;
     }
 }

@@ -30,6 +30,9 @@ public class AgentSessionJpaEntity {
     @Column(name = "system_prompt_appendix")
     private String systemPromptAppendix;
 
+    @Column(name = "workflow_variant_key", length = 120)
+    private String workflowVariantKey;
+
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 
@@ -63,6 +66,7 @@ public class AgentSessionJpaEntity {
             String modelKey,
             String task,
             String systemPromptAppendix,
+            String workflowVariantKey,
             String status,
             String inputJson,
             String finalOutputJson,
@@ -77,6 +81,7 @@ public class AgentSessionJpaEntity {
         this.modelKey = modelKey;
         this.task = task;
         this.systemPromptAppendix = systemPromptAppendix;
+        this.workflowVariantKey = workflowVariantKey;
         this.status = status;
         this.inputJson = inputJson;
         this.finalOutputJson = finalOutputJson;
@@ -109,6 +114,10 @@ public class AgentSessionJpaEntity {
 
     public String getSystemPromptAppendix() {
         return systemPromptAppendix;
+    }
+
+    public String getWorkflowVariantKey() {
+        return workflowVariantKey;
     }
 
     public String getStatus() {

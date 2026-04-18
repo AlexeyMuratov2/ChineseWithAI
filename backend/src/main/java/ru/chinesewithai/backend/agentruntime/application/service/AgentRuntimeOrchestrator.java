@@ -17,6 +17,8 @@ import ru.chinesewithai.backend.agentruntime.application.port.out.AgentStepRepos
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentToolExecutionRequest;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationIssue;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationResult;
+import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationState;
+import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationWorkflowRunner;
 import ru.chinesewithai.backend.agentruntime.application.port.out.ToolRegistry;
 import ru.chinesewithai.backend.agentruntime.domain.model.AgentProfile;
 import ru.chinesewithai.backend.agentruntime.domain.model.AgentSession;
@@ -35,6 +37,7 @@ public class AgentRuntimeOrchestrator {
     private final AgentModelGatewayCatalog modelGatewayCatalog;
     private final AgentContextBuilderCatalog contextBuilderCatalog;
     private final ToolRegistry toolRegistry;
+    private final PreGenerationWorkflowRunner preGenerationWorkflowRunner;
     private final FinalOutputValidationService finalOutputValidationService;
     private final OutputRepairPromptFactory outputRepairPromptFactory;
     private final ObjectMapper objectMapper;
@@ -45,6 +48,7 @@ public class AgentRuntimeOrchestrator {
             AgentModelGatewayCatalog modelGatewayCatalog,
             AgentContextBuilderCatalog contextBuilderCatalog,
             ToolRegistry toolRegistry,
+            PreGenerationWorkflowRunner preGenerationWorkflowRunner,
             FinalOutputValidationService finalOutputValidationService,
             OutputRepairPromptFactory outputRepairPromptFactory,
             ObjectMapper objectMapper) {
@@ -53,6 +57,7 @@ public class AgentRuntimeOrchestrator {
         this.modelGatewayCatalog = modelGatewayCatalog;
         this.contextBuilderCatalog = contextBuilderCatalog;
         this.toolRegistry = toolRegistry;
+        this.preGenerationWorkflowRunner = preGenerationWorkflowRunner;
         this.finalOutputValidationService = finalOutputValidationService;
         this.outputRepairPromptFactory = outputRepairPromptFactory;
         this.objectMapper = objectMapper;
@@ -83,9 +88,49 @@ public class AgentRuntimeOrchestrator {
             var contextBuilder = contextBuilderCatalog.getRequired(profile.contextBuilderKey());
             var toolDefinitions = toolRegistry.getDefinitions(profile.allowedToolNames());
             var conversationHistory = new ArrayList<AgentModelMessage>();
+            var preGeneration = preGenerationWorkflowRunner.run(profile, session);
+
+            nextStepIndex = appendStep(
+                    session,
+                    nextStepIndex,
+                    AgentStepType.PRE_GENERATION_STARTED,
+                    payload(
+                            "requestedWorkflowVariantKey",
+                            session.workflowVariantKey(),
+                            "resolvedWorkflowVariantKey",
+                            preGeneration.workflow().workflowVariantKey(),
+                            "configuredStepCount",
+                            preGeneration.workflow().steps().size()));
+            for (var stepExecution : preGeneration.stepExecutions()) {
+                nextStepIndex = appendStep(
+                        session,
+                        nextStepIndex,
+                        AgentStepType.PRE_GENERATION_STEP,
+                        payload(
+                                "stepKey",
+                                stepExecution.stepKey(),
+                                "params",
+                                stepExecution.params(),
+                                "emittedSectionTitles",
+                                stepExecution.emittedContextSections().stream().map(section -> section.title()).toList(),
+                                "emittedArtifactKeys",
+                                stepExecution.emittedArtifacts().keySet()));
+            }
+            nextStepIndex = appendStep(
+                    session,
+                    nextStepIndex,
+                    AgentStepType.PRE_GENERATION_COMPLETED,
+                    payload(
+                            "resolvedWorkflowVariantKey",
+                            preGeneration.workflow().workflowVariantKey(),
+                            "totalSections",
+                            preGeneration.state().contextSections().size(),
+                            "artifactKeys",
+                            preGeneration.state().artifacts().keySet()));
 
             for (int iteration = 0; iteration < profile.executionPolicy().maxSteps(); iteration++) {
-                var messages = contextBuilder.buildContext(new AgentContextBuildRequest(profile, session, conversationHistory));
+                var messages = contextBuilder.buildContext(
+                        new AgentContextBuildRequest(profile, session, conversationHistory, preGeneration.state()));
                 nextStepIndex = appendStep(
                         session,
                         nextStepIndex,
@@ -190,6 +235,7 @@ public class AgentRuntimeOrchestrator {
                                 gateway,
                                 contextBuilder,
                                 conversationHistory,
+                                preGeneration.state(),
                                 iteration,
                                 nextStepIndex,
                                 modelResponse.finalOutputJson(),
@@ -211,6 +257,7 @@ public class AgentRuntimeOrchestrator {
             ru.chinesewithai.backend.agentruntime.application.port.out.AgentModelGateway gateway,
             ru.chinesewithai.backend.agentruntime.application.port.out.AgentContextBuilder contextBuilder,
             List<AgentModelMessage> conversationHistory,
+            PreGenerationState preGenerationState,
             int iteration,
             int nextStepIndex,
             String rejectedOutputRaw,
@@ -233,7 +280,8 @@ public class AgentRuntimeOrchestrator {
             conversationHistory.add(
                     AgentModelMessage.user(outputRepairPromptFactory.buildRepairPrompt(repairAttempt, currentIssues)));
 
-            var repairMessages = contextBuilder.buildContext(new AgentContextBuildRequest(profile, session, conversationHistory));
+            var repairMessages =
+                    contextBuilder.buildContext(new AgentContextBuildRequest(profile, session, conversationHistory, preGenerationState));
             nextStepIndex = appendStep(
                     session,
                     nextStepIndex,

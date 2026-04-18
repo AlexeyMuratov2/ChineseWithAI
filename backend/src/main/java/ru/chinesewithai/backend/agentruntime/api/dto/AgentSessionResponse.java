@@ -11,6 +11,7 @@ public record AgentSessionResponse(
         String profileKey,
         String modelKey,
         String task,
+        String workflowVariantKey,
         String status,
         JsonNode input,
         JsonNode finalOutput,

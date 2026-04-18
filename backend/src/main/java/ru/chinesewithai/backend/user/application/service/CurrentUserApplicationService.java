@@ -3,15 +3,18 @@ package ru.chinesewithai.backend.user.application.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.chinesewithai.backend.user.application.exception.AccountDisabledException;
+import ru.chinesewithai.backend.user.application.port.in.CurrentUserSummaryView;
 import ru.chinesewithai.backend.user.application.exception.UserNotFoundException;
 import ru.chinesewithai.backend.user.application.port.in.GetCurrentUserUseCase;
 import ru.chinesewithai.backend.user.application.port.in.GetCurrentUserIdUseCase;
+import ru.chinesewithai.backend.user.application.port.in.GetCurrentUserSummaryUseCase;
 import ru.chinesewithai.backend.user.application.port.out.CurrentUserProvider;
 import ru.chinesewithai.backend.user.application.port.out.UserRepository;
 import ru.chinesewithai.backend.user.application.view.UserProfileView;
 
 @Service
-public class CurrentUserApplicationService implements GetCurrentUserUseCase, GetCurrentUserIdUseCase {
+public class CurrentUserApplicationService
+        implements GetCurrentUserUseCase, GetCurrentUserIdUseCase, GetCurrentUserSummaryUseCase {
 
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
@@ -38,5 +41,16 @@ public class CurrentUserApplicationService implements GetCurrentUserUseCase, Get
     @Transactional(readOnly = true)
     public java.util.UUID getCurrentUserId() {
         return currentUserProvider.getCurrentUserId().value();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CurrentUserSummaryView getCurrentUserSummary() {
+        var currentUser = getCurrentUser();
+        return new CurrentUserSummaryView(
+                currentUser.id(),
+                currentUser.username(),
+                currentUser.displayName(),
+                currentUser.status().name());
     }
 }

@@ -2,6 +2,9 @@ package ru.chinesewithai.backend.agentruntime.domain.model;
 
 public enum AgentStepType {
     SESSION_CREATED,
+    PRE_GENERATION_STARTED,
+    PRE_GENERATION_STEP,
+    PRE_GENERATION_COMPLETED,
     CONTEXT_BUILT,
     MODEL_REQUEST,
     MODEL_RESPONSE,

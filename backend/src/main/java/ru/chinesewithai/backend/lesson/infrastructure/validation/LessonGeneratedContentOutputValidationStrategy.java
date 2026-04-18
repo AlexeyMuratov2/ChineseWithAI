@@ -52,7 +52,7 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
     }
 
     private LessonModule resolveModule(OutputValidationStrategyRequest request) {
-        var moduleKey = readModuleKey(request.session().inputJson());
+        var moduleKey = readModuleKey(request.sessionInputJson());
         return lessonModuleRepository
                 .findByModuleKey(moduleKey)
                 .orElseThrow(() -> new IllegalStateException("Missing lesson module for output validation: " + moduleKey));

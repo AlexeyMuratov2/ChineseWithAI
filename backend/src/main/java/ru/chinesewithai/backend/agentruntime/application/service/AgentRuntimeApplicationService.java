@@ -9,12 +9,14 @@ import ru.chinesewithai.backend.agentruntime.application.command.StartAgentSessi
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentModelNotFoundException;
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentProfileNotFoundException;
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentSessionNotFoundException;
+import ru.chinesewithai.backend.agentruntime.application.exception.AgentWorkflowVariantNotFoundException;
 import ru.chinesewithai.backend.agentruntime.application.port.in.GetAgentSessionUseCase;
 import ru.chinesewithai.backend.agentruntime.application.port.in.ListAgentModelsUseCase;
 import ru.chinesewithai.backend.agentruntime.application.port.in.ListAgentProfilesUseCase;
 import ru.chinesewithai.backend.agentruntime.application.port.in.StartAgentSessionUseCase;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentModelCatalog;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentProfileRegistry;
+import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationWorkflowRegistry;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentSessionRepository;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentStepRepository;
 import ru.chinesewithai.backend.agentruntime.application.port.out.CurrentAgentOwnerProvider;
@@ -33,6 +35,7 @@ public class AgentRuntimeApplicationService
     private final AgentSessionRepository agentSessionRepository;
     private final AgentStepRepository agentStepRepository;
     private final CurrentAgentOwnerProvider currentAgentOwnerProvider;
+    private final PreGenerationWorkflowRegistry preGenerationWorkflowRegistry;
     private final AgentRuntimeOrchestrator orchestrator;
 
     public AgentRuntimeApplicationService(
@@ -41,12 +44,14 @@ public class AgentRuntimeApplicationService
             AgentSessionRepository agentSessionRepository,
             AgentStepRepository agentStepRepository,
             CurrentAgentOwnerProvider currentAgentOwnerProvider,
+            PreGenerationWorkflowRegistry preGenerationWorkflowRegistry,
             AgentRuntimeOrchestrator orchestrator) {
         this.agentModelCatalog = agentModelCatalog;
         this.agentProfileRegistry = agentProfileRegistry;
         this.agentSessionRepository = agentSessionRepository;
         this.agentStepRepository = agentStepRepository;
         this.currentAgentOwnerProvider = currentAgentOwnerProvider;
+        this.preGenerationWorkflowRegistry = preGenerationWorkflowRegistry;
         this.orchestrator = orchestrator;
     }
 
@@ -58,6 +63,7 @@ public class AgentRuntimeApplicationService
         var model = agentModelCatalog
                 .findByModelKey(command.modelKey())
                 .orElseThrow(() -> new AgentModelNotFoundException(command.modelKey()));
+        validateWorkflowVariant(profile.profileKey(), command.workflowVariantKey());
         var ownerId = currentAgentOwnerProvider.getCurrentOwnerId();
         var session = agentSessionRepository.save(AgentSession.createNew(
                 ownerId,
@@ -66,6 +72,7 @@ public class AgentRuntimeApplicationService
                 command.task(),
                 command.inputJson(),
                 command.systemPromptAppendix(),
+                command.workflowVariantKey(),
                 Instant.now()));
         return toView(orchestrator.execute(profile, model, session));
     }
@@ -108,6 +115,7 @@ public class AgentRuntimeApplicationService
                 session.profileKey(),
                 session.modelKey(),
                 session.task(),
+                session.workflowVariantKey(),
                 session.status().name(),
                 session.inputJson(),
                 session.finalOutputJson(),
@@ -117,5 +125,16 @@ public class AgentRuntimeApplicationService
                 session.finishedAt(),
                 session.updatedAt(),
                 steps);
+    }
+
+    private void validateWorkflowVariant(String profileKey, String workflowVariantKey) {
+        if (workflowVariantKey == null) {
+            return;
+        }
+        if (preGenerationWorkflowRegistry
+                .findVariant(profileKey, workflowVariantKey)
+                .isEmpty()) {
+            throw new AgentWorkflowVariantNotFoundException(profileKey, workflowVariantKey);
+        }
     }
 }
