@@ -35,6 +35,8 @@ management:
 
 app:
   agentruntime:
+    # When true, logs full chat/completions request/response bodies (may contain PII). Use CWA_LOG_MODEL_IO=true only on trusted hosts.
+    log-model-io: ${CWA_LOG_MODEL_IO:false}
     deepseek:
       base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
       api-key: ${DEEPSEEK_API_KEY:sk-052e84d9015f47b5b5525a21bf36fc0d}

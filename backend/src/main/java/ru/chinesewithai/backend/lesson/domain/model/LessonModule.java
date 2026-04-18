@@ -9,6 +9,8 @@ public record LessonModule(
         String systemPromptAppendix,
         int schemaVersion,
         boolean active,
+        String generatorProfileKey,
+        String generatorWorkflowVariantKey,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -16,6 +18,8 @@ public record LessonModule(
         moduleKey = requireText(moduleKey, "moduleKey");
         displayName = requireText(displayName, "displayName");
         systemPromptAppendix = requireText(systemPromptAppendix, "systemPromptAppendix");
+        generatorProfileKey = requireText(generatorProfileKey, "generatorProfileKey");
+        generatorWorkflowVariantKey = normalizeOptional(generatorWorkflowVariantKey);
         if (schemaVersion <= 0) {
             throw new IllegalArgumentException("schemaVersion must be > 0");
         }
@@ -28,5 +32,13 @@ public record LessonModule(
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        var normalized = value.trim();
+        return normalized.isBlank() ? null : normalized;
     }
 }

@@ -18,11 +18,15 @@ class LessonContentValidatorTest {
             "prompt",
             1,
             true,
+            "lesson-generator:v1",
+            "draft-generation-with-review:v1",
             Instant.now(),
             Instant.now());
 
     private final LessonContentValidator validator =
-            new LessonContentValidator(new ObjectMapper(), new LessonModuleStrategyCatalog(List.of(new TestModuleLessonStrategy())));
+            new LessonContentValidator(
+                    new ObjectMapper(),
+                    new LessonModuleStrategyCatalog(List.of(new TestModuleLessonStrategy(), new Hsk5V1LessonStrategy())));
 
     @Test
     void validatesGenericEnvelopeWithoutModule() {

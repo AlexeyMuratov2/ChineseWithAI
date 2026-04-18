@@ -60,12 +60,15 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
         register("lesson_modules_reader", "StrongPass123!", "Lesson Modules Reader");
         var token = login("lesson_modules_reader", "StrongPass123!");
 
-        mockMvc.perform(get("/api/v1/lessons/modules").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        var response = mockMvc.perform(get("/api/v1/lessons/modules").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].moduleKey").value("TestModule"))
-                .andExpect(jsonPath("$[0].displayName").value("TestModule"))
-                .andExpect(jsonPath("$[0].schemaVersion").value(1))
-                .andExpect(jsonPath("$[0].active").value(true));
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var modules = objectMapper.readTree(response);
+        assertThat(modules).hasSize(2);
+        assertThat(modules).extracting(node -> node.path("moduleKey").asText()).contains("TestModule", "hsk5_v1");
     }
 
     @Test
@@ -170,6 +173,112 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.content.reviewWords").isArray())
                 .andExpect(jsonPath("$.content.sections[0].type").value("word_usage"))
                 .andExpect(jsonPath("$.content.sections[1].type").value("reading"));
+    }
+
+    @Test
+    void repeatedGenerateHsk5UsesModuleProfileDefaultWorkflowAndReviewBlocks() throws Exception {
+        register("lesson_hsk5_generate", "StrongPass123!", "Lesson HSK5 Generate");
+        var token = login("lesson_hsk5_generate", "StrongPass123!");
+
+        var firstDraftId = createDraftWithSingleTextSource(
+                token,
+                "第一次 HSK5",
+                "机会常常来自准备，也会影响一个人的选择。");
+        mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", firstDraftId,
+                                "moduleKey", "hsk5_v1",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("hsk5_v1"))
+                .andExpect(jsonPath("$.content.sections[2].text").value("机会常常来自准备，也会影响一个人的选择。"));
+
+        var secondDraftText = "保持清楚的态度，才能理解复杂的问题。";
+        var secondDraftId = createDraftWithSingleTextSource(token, "第二次 HSK5", secondDraftText);
+        var secondGenerateResponse = mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", secondDraftId,
+                                "moduleKey", "hsk5_v1",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("hsk5_v1"))
+                .andExpect(jsonPath("$.generatorSessionId").isNotEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var generatedLesson = objectMapper.readTree(secondGenerateResponse);
+        var content = generatedLesson.path("content");
+        assertThat(content.path("reviewWords")).hasSize(2);
+        assertThat(content.path("sections")).extracting(section -> section.path("type").asText())
+                .contains("word_study", "text", "conversation", "word_game");
+        var textSections = new java.util.ArrayList<JsonNode>();
+        var wordStudyStatuses = new java.util.ArrayList<String>();
+        content.path("sections").forEach(section -> {
+            if ("text".equals(section.path("type").asText())) {
+                textSections.add(section);
+            }
+            if ("word_study".equals(section.path("type").asText())) {
+                wordStudyStatuses.add(section.path("vocabularyStatus").asText());
+            }
+        });
+        assertThat(textSections).singleElement().satisfies(section -> {
+            assertThat(section.path("text").asText()).isEqualTo(secondDraftText);
+            assertThat(section.has("translation")).isFalse();
+        });
+        assertThat(wordStudyStatuses).contains("review");
+
+        var generatorSessionId = UUID.fromString(generatedLesson.get("generatorSessionId").asText());
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT profile_key FROM agent_sessions WHERE id = ?",
+                        String.class,
+                        generatorSessionId))
+                .isEqualTo("lesson-generator:hsk5_v1");
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT workflow_variant_key FROM agent_sessions WHERE id = ?",
+                        String.class,
+                        generatorSessionId))
+                .isNull();
+
+        var stepKeys = preGenerationStepKeys(generatorSessionId);
+        assertThat(stepKeys).containsExactly("current-user-profile", "lesson-vocabulary-review-plan");
+    }
+
+    @Test
+    void generateHsk5RepairsInvalidAgentOutputAndCreatesLesson() throws Exception {
+        register("lesson_hsk5_repair", "StrongPass123!", "Lesson HSK5 Repair");
+        var token = login("lesson_hsk5_repair", "StrongPass123!");
+        var draftId = createDraftWithSingleTextSource(
+                token, "Repairable HSK5 output", "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]");
+
+        var generateResponse = mockMvc.perform(post("/api/v1/lessons/generate")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", draftId,
+                                "moduleKey", "hsk5_v1",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("hsk5_v1"))
+                .andExpect(jsonPath("$.generatorSessionId").isNotEmpty())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var generatedLesson = objectMapper.readTree(generateResponse);
+        var generatorSessionId = UUID.fromString(generatedLesson.get("generatorSessionId").asText());
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM agent_steps WHERE session_id = ? AND step_type = 'OUTPUT_VALIDATION_FAILED'",
+                        Integer.class,
+                        generatorSessionId))
+                .isEqualTo(1);
+        assertThat(generatedLesson.path("content").path("sections"))
+                .extracting(section -> section.path("type").asText())
+                .contains("word_study", "text", "conversation", "word_game");
     }
 
     @Test
@@ -425,6 +534,19 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Missing step: " + stepType))
                 .payloadJson());
+    }
+
+    private List<String> preGenerationStepKeys(UUID generatorSessionId) {
+        return jdbcTemplate.query(
+                "SELECT payload_json FROM agent_steps WHERE session_id = ? AND step_type = 'PRE_GENERATION_STEP' ORDER BY step_index",
+                (rs, rowNum) -> {
+                    try {
+                        return objectMapper.readTree(rs.getString("payload_json")).path("stepKey").asText();
+                    } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
+                        throw new IllegalStateException("Failed to parse step payload", ex);
+                    }
+                },
+                generatorSessionId);
     }
 
     private void register(String username, String password, String displayName) throws Exception {

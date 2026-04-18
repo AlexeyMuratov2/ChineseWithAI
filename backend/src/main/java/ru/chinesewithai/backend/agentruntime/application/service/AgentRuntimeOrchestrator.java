@@ -30,7 +30,8 @@ import ru.chinesewithai.backend.agentruntime.infrastructure.model.AgentModelGate
 @Component
 public class AgentRuntimeOrchestrator {
 
-    private static final int MAX_REPAIR_ATTEMPTS = 3;
+    private static final int MAX_FINAL_OUTPUT_ATTEMPTS = 3;
+    private static final int MAX_REPAIR_ATTEMPTS = MAX_FINAL_OUTPUT_ATTEMPTS - 1;
 
     private final AgentSessionRepository agentSessionRepository;
     private final AgentStepRepository agentStepRepository;
@@ -273,12 +274,18 @@ public class AgentRuntimeOrchestrator {
                     "Final output validation failed: " + outputRepairPromptFactory.summarizeIssues(currentIssues));
         }
 
-        for (int repairAttempt = 1; repairAttempt <= MAX_REPAIR_ATTEMPTS; repairAttempt++) {
+        for (int finalOutputAttempt = 1; finalOutputAttempt <= MAX_FINAL_OUTPUT_ATTEMPTS; finalOutputAttempt++) {
             nextStepIndex =
-                    appendOutputValidationFailed(session, nextStepIndex, repairAttempt, currentRejectedOutput, currentIssues);
+                    appendOutputValidationFailed(session, nextStepIndex, finalOutputAttempt, currentRejectedOutput, currentIssues);
+            if (finalOutputAttempt == MAX_FINAL_OUTPUT_ATTEMPTS) {
+                break;
+            }
+
+            var repairAttempt = finalOutputAttempt;
             conversationHistory.add(AgentModelMessage.assistant(currentRejectedOutput));
             conversationHistory.add(
-                    AgentModelMessage.user(outputRepairPromptFactory.buildRepairPrompt(repairAttempt, currentIssues)));
+                    AgentModelMessage.user(
+                            outputRepairPromptFactory.buildRepairPrompt(repairAttempt, MAX_REPAIR_ATTEMPTS, currentIssues)));
 
             var repairMessages =
                     contextBuilder.buildContext(new AgentContextBuildRequest(profile, session, conversationHistory, preGenerationState));
@@ -362,8 +369,8 @@ public class AgentRuntimeOrchestrator {
         return failSession(
                 session,
                 nextStepIndex,
-                "Final output validation failed after %d repair attempts: %s"
-                        .formatted(MAX_REPAIR_ATTEMPTS, outputRepairPromptFactory.summarizeIssues(currentIssues)));
+                "Final output validation failed after %d failed output attempts: %s"
+                        .formatted(MAX_FINAL_OUTPUT_ATTEMPTS, outputRepairPromptFactory.summarizeIssues(currentIssues)));
     }
 
     private int appendOutputValidationFailed(

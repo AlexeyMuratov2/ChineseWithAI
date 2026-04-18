@@ -10,19 +10,17 @@ import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidati
 @Component
 public class OutputRepairPromptFactory {
 
-    private static final int MAX_REPAIR_ATTEMPTS = 3;
-
     private final ObjectMapper objectMapper;
 
     public OutputRepairPromptFactory(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    public String buildRepairPrompt(int repairAttempt, List<OutputValidationIssue> issues) {
+    public String buildRepairPrompt(int repairAttempt, int maxRepairAttempts, List<OutputValidationIssue> issues) {
         var joiner = new StringJoiner("\n\n");
         joiner.add("The previous final JSON response was rejected because it does not satisfy the required output contract.");
-        joiner.add("Repair attempt %d of %d.".formatted(repairAttempt, MAX_REPAIR_ATTEMPTS));
-        joiner.add("Return the full corrected JSON object only. Do not call tools. Do not add markdown fences. Keep all valid data and change only what is necessary to fix the listed problems.");
+        joiner.add("Repair attempt %d of %d.".formatted(repairAttempt, maxRepairAttempts));
+        joiner.add("Return the full corrected JSON object only. Do not call tools. Do not add markdown fences. Keep all valid data and change only what is necessary to fix the listed problems. Use the exact field names shown in validation paths; if the same data is under a different field name, rename it to the expected field.");
         joiner.add("Validation issues:\n" + writeIssues(issues));
         return joiner.toString();
     }

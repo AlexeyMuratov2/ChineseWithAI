@@ -16,6 +16,7 @@ class OutputRepairPromptFactoryTest {
     void rendersReadableRepairPromptWithSerializedIssues() {
         var prompt = factory.buildRepairPrompt(
                 2,
+                2,
                 List.of(new OutputValidationIssue(
                         "lesson-generated-content",
                         "missing_field",
@@ -24,7 +25,7 @@ class OutputRepairPromptFactoryTest {
                         "missing",
                         "sections[1].text must be a non-empty string")));
 
-        assertThat(prompt).contains("Repair attempt 2 of 3.");
+        assertThat(prompt).contains("Repair attempt 2 of 2.");
         assertThat(prompt).contains("Return the full corrected JSON object only.");
         assertThat(prompt).contains("\"path\" : \"sections[1].text\"");
         assertThat(prompt).contains("\"code\" : \"missing_field\"");

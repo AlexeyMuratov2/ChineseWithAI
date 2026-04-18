@@ -41,8 +41,6 @@ import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftView;
 public class LessonApplicationService
         implements CreateLessonFromJsonUseCase, GenerateLessonFromDraftUseCase, GetLessonUseCase {
 
-    private static final String LESSON_GENERATOR_PROFILE_KEY = "lesson-generator:v1";
-    private static final String LESSON_GENERATOR_WORKFLOW_VARIANT_KEY = "draft-generation-with-review:v1";
     private static final String GENERATE_TASK = "Generate a lesson JSON from the provided lesson draft.";
 
     private final LessonRepository lessonRepository;
@@ -124,12 +122,12 @@ public class LessonApplicationService
         strategyCatalog.getRequired(module.moduleKey()).validateDraftForGeneration(draft);
 
         var session = startAgentSessionUseCase.startSession(new StartAgentSessionCommand(
-                LESSON_GENERATOR_PROFILE_KEY,
+                module.generatorProfileKey(),
                 resolveModelKey(command.modelKey()),
                 GENERATE_TASK,
                 writeJson(buildGenerationInput(draft, module)),
                 promptFactory.buildSystemPromptAppendix(module),
-                LESSON_GENERATOR_WORKFLOW_VARIANT_KEY));
+                module.generatorWorkflowVariantKey()));
 
         if (!"COMPLETED".equals(session.status()) || session.finalOutputJson() == null) {
             throw new LessonGenerationFailedException(session.sessionId(), session.failureReason());

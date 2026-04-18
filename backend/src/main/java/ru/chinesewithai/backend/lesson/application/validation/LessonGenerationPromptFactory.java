@@ -25,6 +25,7 @@ public class LessonGenerationPromptFactory {
                 - Use explanationLanguage for titles, explanations, and study instructions.
                 - Use translationLanguage for translation fields.
                 - newWords must always be present as an array.
+                - reviewWords must always be present as an array.
                 - sections must always be present as an array.
                 """);
         joiner.add(strategy.generationInstructions());

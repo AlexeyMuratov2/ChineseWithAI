@@ -34,9 +34,8 @@ class DefaultAgentContextBuilderTest {
                 List.of(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("title", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("title", OutputFieldType.STRING)),
                 false,
-                null,
                 false);
         var session = AgentSession.createNew(
                 UUID.randomUUID(),
@@ -63,9 +62,8 @@ class DefaultAgentContextBuilderTest {
                 List.of(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 false,
-                null,
                 true);
         var session = AgentSession.createNew(
                 UUID.randomUUID(),

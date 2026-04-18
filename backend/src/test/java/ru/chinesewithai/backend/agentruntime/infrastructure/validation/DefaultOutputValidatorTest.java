@@ -17,7 +17,7 @@ class DefaultOutputValidatorTest {
     void reportsMissingRequiredFields() throws Exception {
         var output = objectMapper.readTree("{\"summary\":\"ok\"}");
 
-        var issues = validator.validate(output, new OutputContract(Map.of(
+        var issues = validator.validate(output, OutputContract.ofRequiredFields(Map.of(
                 "summary", OutputFieldType.STRING,
                 "answer", OutputFieldType.STRING)));
 
@@ -30,7 +30,7 @@ class DefaultOutputValidatorTest {
     void reportsInvalidFieldTypes() throws Exception {
         var output = objectMapper.readTree("{\"answer\":42}");
 
-        var issues = validator.validate(output, new OutputContract(Map.of("answer", OutputFieldType.STRING)));
+        var issues = validator.validate(output, OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)));
 
         assertThat(issues).hasSize(1);
         assertThat(issues.getFirst().code()).isEqualTo("invalid_type");

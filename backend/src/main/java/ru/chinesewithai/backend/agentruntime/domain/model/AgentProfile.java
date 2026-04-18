@@ -13,7 +13,6 @@ public record AgentProfile(
         MemoryPolicy memoryPolicy,
         OutputContract outputContract,
         boolean autoRepairInvalidOutputEnabled,
-        String outputValidationStrategyKey,
         boolean visible) {
 
     public AgentProfile {
@@ -26,19 +25,11 @@ public record AgentProfile(
         Objects.requireNonNull(executionPolicy, "executionPolicy must not be null");
         Objects.requireNonNull(memoryPolicy, "memoryPolicy must not be null");
         Objects.requireNonNull(outputContract, "outputContract must not be null");
-        outputValidationStrategyKey = normalizeOptional(outputValidationStrategyKey);
     }
 
     private static String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
-        }
-        return value;
-    }
-
-    private static String normalizeOptional(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
         }
         return value;
     }

@@ -45,17 +45,35 @@ class LessonMigrationIntegrationTest extends AbstractIntegrationTest {
 
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             try (ResultSet rs = statement.executeQuery(
-                    "SELECT module_key, schema_version, is_active FROM " + schema + ".lesson_modules WHERE module_key = 'TestModule'")) {
+                    "SELECT module_key, schema_version, is_active, generator_profile_key, generator_workflow_variant_key FROM "
+                            + schema
+                            + ".lesson_modules WHERE module_key = 'TestModule'")) {
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getString("module_key")).isEqualTo("TestModule");
                 assertThat(rs.getInt("schema_version")).isEqualTo(1);
                 assertThat(rs.getBoolean("is_active")).isTrue();
+                assertThat(rs.getString("generator_profile_key")).isEqualTo("lesson-generator:v1");
+                assertThat(rs.getString("generator_workflow_variant_key")).isEqualTo("draft-generation-with-review:v1");
             }
 
             try (ResultSet rs = statement.executeQuery(
                     "SELECT profile_key, is_visible FROM " + schema + ".agent_profiles WHERE profile_key = 'lesson-generator:v1'")) {
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getBoolean("is_visible")).isFalse();
+            }
+
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT module_key, generator_profile_key, generator_workflow_variant_key, system_prompt_appendix FROM "
+                            + schema
+                            + ".lesson_modules WHERE module_key = 'hsk5_v1'")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString("generator_profile_key")).isEqualTo("lesson-generator:hsk5_v1");
+                assertThat(rs.getString("generator_workflow_variant_key")).isNull();
+                assertThat(rs.getString("system_prompt_appendix"))
+                        .contains("sentences")
+                        .contains("exampleSentences")
+                        .contains("answerWord")
+                        .contains("expectedWord");
             }
 
             try (ResultSet rs = statement.executeQuery(

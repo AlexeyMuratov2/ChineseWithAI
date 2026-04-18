@@ -33,11 +33,17 @@ public class DeepSeekModelGateway implements AgentModelGateway {
             new AgentModelDescriptor(MODEL_KEY, "DeepSeek Chat", PROVIDER_KEY, true);
 
     private final DeepSeekProperties properties;
+    private final AgentRuntimeProperties agentRuntimeProperties;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
-    public DeepSeekModelGateway(DeepSeekProperties properties, RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
+    public DeepSeekModelGateway(
+            DeepSeekProperties properties,
+            AgentRuntimeProperties agentRuntimeProperties,
+            RestClient.Builder restClientBuilder,
+            ObjectMapper objectMapper) {
         this.properties = properties;
+        this.agentRuntimeProperties = agentRuntimeProperties;
         this.restClient = restClientBuilder
                 .baseUrl(properties.baseUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + safeApiKey(properties.apiKey()))
@@ -71,11 +77,25 @@ public class DeepSeekModelGateway implements AgentModelGateway {
             throw new IllegalStateException("DeepSeek API key is not configured");
         }
 
+        var requestBody = buildRequestBody(request);
+        if (agentRuntimeProperties.logModelIo()) {
+            log.info(
+                    "DeepSeek model request sessionId={} profileKey={} sessionModelKey={} requestModelKey={} provider={} messageCount={} toolsPresent={} body={}",
+                    request.session().id(),
+                    request.session().profileKey(),
+                    request.session().modelKey(),
+                    request.model().modelKey(),
+                    providerKey(),
+                    request.messages().size(),
+                    !request.tools().isEmpty(),
+                    writeJson(requestBody));
+        }
+
         try {
             var response = restClient
                     .post()
                     .uri("/chat/completions")
-                    .body(buildRequestBody(request))
+                    .body(requestBody)
                     .retrieve()
                     .body(DeepSeekChatCompletionResponse.class);
             if (response == null || response.choices() == null || response.choices().isEmpty()) {
@@ -85,6 +105,14 @@ public class DeepSeekModelGateway implements AgentModelGateway {
             var choice = response.choices().getFirst();
             var message = choice.message();
             var rawPayloadJson = writeJson(response);
+
+            if (agentRuntimeProperties.logModelIo()) {
+                log.info(
+                        "DeepSeek model response sessionId={} profileKey={} rawPayload={}",
+                        request.session().id(),
+                        request.session().profileKey(),
+                        rawPayloadJson);
+            }
 
             if (message != null && message.toolCalls() != null && !message.toolCalls().isEmpty()) {
                 var toolCalls = message.toolCalls().stream()
@@ -102,6 +130,14 @@ public class DeepSeekModelGateway implements AgentModelGateway {
 
             return AgentModelResponse.finalOutput(rawPayloadJson, normalizeFinalOutput(message.content()));
         } catch (RestClientResponseException ex) {
+            if (agentRuntimeProperties.logModelIo()) {
+                log.info(
+                        "DeepSeek model error sessionId={} profileKey={} status={} body={}",
+                        request.session().id(),
+                        request.session().profileKey(),
+                        ex.getStatusCode().value(),
+                        responseBody(ex));
+            }
             throw new IllegalStateException(
                     "DeepSeek API request failed with status "
                             + ex.getStatusCode().value()
@@ -109,6 +145,13 @@ public class DeepSeekModelGateway implements AgentModelGateway {
                             + responseBody(ex),
                     ex);
         } catch (RestClientException ex) {
+            if (agentRuntimeProperties.logModelIo()) {
+                log.info(
+                        "DeepSeek model error sessionId={} profileKey={} message={}",
+                        request.session().id(),
+                        request.session().profileKey(),
+                        ex.getMessage());
+            }
             throw new IllegalStateException("DeepSeek API request failed: " + ex.getMessage(), ex);
         }
     }

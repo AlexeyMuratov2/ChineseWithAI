@@ -2,24 +2,16 @@ package ru.chinesewithai.backend.agentruntime.application.port.out;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Objects;
+import ru.chinesewithai.backend.agentruntime.domain.model.AgentProfile;
 
 public record OutputValidationStrategyRequest(
-        String profileKey, String sessionInputJson, JsonNode output, String rawOutputJson) {
+        AgentProfile profile, String sessionInputJson, JsonNode output, String rawOutputJson) {
 
     public OutputValidationStrategyRequest {
-        profileKey = requireText(profileKey, "profileKey");
+        Objects.requireNonNull(profile, "profile must not be null");
         Objects.requireNonNull(output, "output must not be null");
         Objects.requireNonNull(rawOutputJson, "rawOutputJson must not be null");
         sessionInputJson = normalizeOptional(sessionInputJson);
-    }
-
-    private static String requireText(String value, String fieldName) {
-        Objects.requireNonNull(value, fieldName + " must not be null");
-        var normalized = value.trim();
-        if (normalized.isBlank()) {
-            throw new IllegalArgumentException(fieldName + " must not be blank");
-        }
-        return normalized;
     }
 
     private static String normalizeOptional(String value) {

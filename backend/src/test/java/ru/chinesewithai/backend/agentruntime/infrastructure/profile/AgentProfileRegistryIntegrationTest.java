@@ -34,6 +34,7 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
     void seededProfilesLoadWithVisibilityAndParsedPolicies() {
         var hiddenProfile = agentProfileRegistry.findByProfileKey("test-agent:v1");
         var lessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:v1");
+        var hsk5LessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:hsk5_v1");
         var visibleProfiles = agentProfileRegistry.findVisibleProfiles();
 
         assertThat(hiddenProfile).isPresent();
@@ -50,19 +51,33 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         assertThat(lessonGeneratorProfile.orElseThrow().visible()).isFalse();
         assertThat(lessonGeneratorProfile.orElseThrow().allowedToolNames()).isEmpty();
         assertThat(lessonGeneratorProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
-        assertThat(lessonGeneratorProfile.orElseThrow().outputValidationStrategyKey())
-                .isEqualTo("lesson-generated-content");
         assertThat(lessonGeneratorProfile.orElseThrow().outputContract().requiredFields())
                 .containsEntry("schemaVersion", OutputFieldType.NUMBER)
                 .containsEntry("moduleKey", OutputFieldType.STRING)
                 .containsEntry("newWords", OutputFieldType.ARRAY)
+                .containsEntry("sections", OutputFieldType.ARRAY);
+        assertThat(lessonGeneratorProfile.orElseThrow().outputContract().rawJson())
+                .contains("\"schemaVersion\":\"number\"");
+
+        assertThat(hsk5LessonGeneratorProfile).isPresent();
+        assertThat(hsk5LessonGeneratorProfile.orElseThrow().visible()).isFalse();
+        assertThat(hsk5LessonGeneratorProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
+        assertThat(hsk5LessonGeneratorProfile.orElseThrow().systemPrompt())
+                .contains("sentences")
+                .contains("exampleSentences")
+                .contains("answerWord")
+                .contains("expectedWord");
+        assertThat(hsk5LessonGeneratorProfile.orElseThrow().outputContract().requiredFields())
+                .containsEntry("schemaVersion", OutputFieldType.NUMBER)
+                .containsEntry("moduleKey", OutputFieldType.STRING)
+                .containsEntry("newWords", OutputFieldType.ARRAY)
+                .containsEntry("reviewWords", OutputFieldType.ARRAY)
                 .containsEntry("sections", OutputFieldType.ARRAY);
 
         assertThat(visibleProfiles).extracting(profile -> profile.profileKey()).containsExactly("assistant:v1");
         assertThat(visibleProfiles.getFirst().visible()).isTrue();
         assertThat(visibleProfiles.getFirst().allowedToolNames()).isEmpty();
         assertThat(visibleProfiles.getFirst().autoRepairInvalidOutputEnabled()).isFalse();
-        assertThat(visibleProfiles.getFirst().outputValidationStrategyKey()).isNull();
         assertThat(visibleProfiles.getFirst().outputContract().requiredFields())
                 .containsEntry("answer", OutputFieldType.STRING);
     }

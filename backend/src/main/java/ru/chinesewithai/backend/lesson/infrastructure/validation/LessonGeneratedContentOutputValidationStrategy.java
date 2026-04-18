@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationIssue;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategy;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategyRequest;
+import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 import ru.chinesewithai.backend.lesson.application.exception.LessonContentValidationException;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonModuleRepository;
 import ru.chinesewithai.backend.lesson.application.validation.LessonContentValidator;
@@ -17,8 +19,13 @@ import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 @Component
 public class LessonGeneratedContentOutputValidationStrategy implements OutputValidationStrategy {
 
-    static final String STRATEGY_KEY = "lesson-generated-content";
+    private static final String PROFILE_KEY_PREFIX = "lesson-generator:";
     private static final String VALIDATOR_KEY = "lesson-generated-content";
+    private static final Map<String, OutputFieldType> REQUIRED_FIELDS = Map.of(
+            "schemaVersion", OutputFieldType.NUMBER,
+            "moduleKey", OutputFieldType.STRING,
+            "newWords", OutputFieldType.ARRAY,
+            "sections", OutputFieldType.ARRAY);
     private static final Pattern EXACT_VALUE_PATTERN = Pattern.compile("^(.+) must be \"([^\"]+)\"$");
     private static final Pattern SIMPLE_EXPECTATION_PATTERN = Pattern.compile("^(.+) must be (a string|an array|an object|an integer)$");
     private static final Pattern MAX_LENGTH_PATTERN = Pattern.compile("^(.+) must be at most (\\d+) chars$");
@@ -37,8 +44,9 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
     }
 
     @Override
-    public String key() {
-        return STRATEGY_KEY;
+    public boolean supports(OutputValidationStrategyRequest request) {
+        return request.profile().profileKey().startsWith(PROFILE_KEY_PREFIX)
+                && request.profile().outputContract().hasAllRequiredFields(REQUIRED_FIELDS);
     }
 
     @Override

@@ -84,9 +84,8 @@ class LessonVocabularyReviewPlanPreGenerationStepTest {
                 List.of(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("title", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("title", OutputFieldType.STRING)),
                 false,
-                null,
                 false);
     }
 }

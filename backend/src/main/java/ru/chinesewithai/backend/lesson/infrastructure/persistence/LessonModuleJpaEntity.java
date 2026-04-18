@@ -26,6 +26,12 @@ public class LessonModuleJpaEntity {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    @Column(name = "generator_profile_key", nullable = false, length = 120)
+    private String generatorProfileKey;
+
+    @Column(name = "generator_workflow_variant_key", length = 120)
+    private String generatorWorkflowVariantKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -52,6 +58,14 @@ public class LessonModuleJpaEntity {
 
     public boolean isActive() {
         return active;
+    }
+
+    public String getGeneratorProfileKey() {
+        return generatorProfileKey;
+    }
+
+    public String getGeneratorWorkflowVariantKey() {
+        return generatorWorkflowVariantKey;
     }
 
     public Instant getCreatedAt() {

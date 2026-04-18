@@ -58,6 +58,8 @@ public class LessonPersistenceMapper {
                 entity.getSystemPromptAppendix(),
                 entity.getSchemaVersion(),
                 entity.isActive(),
+                entity.getGeneratorProfileKey(),
+                entity.getGeneratorWorkflowVariantKey(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

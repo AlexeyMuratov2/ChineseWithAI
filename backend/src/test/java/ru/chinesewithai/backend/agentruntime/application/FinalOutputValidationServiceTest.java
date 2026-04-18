@@ -30,7 +30,7 @@ class FinalOutputValidationServiceTest {
         var service = new FinalOutputValidationService(
                 objectMapper, new DefaultOutputValidator(), new OutputValidationStrategyCatalog(List.of()));
 
-        var result = service.validate(profile(null), session(), "{not-json");
+        var result = service.validate(profile(), session(), "{not-json");
 
         assertThat(result.isValid()).isFalse();
         assertThat(result.issues()).singleElement().satisfies(issue -> {
@@ -40,11 +40,25 @@ class FinalOutputValidationServiceTest {
     }
 
     @Test
-    void combinesBuiltInAndStrategyValidationIssues() {
+    void combinesBuiltInAndMatchingStrategyValidationIssues() {
+        var unsupportedStrategy = new OutputValidationStrategy() {
+            @Override
+            public boolean supports(OutputValidationStrategyRequest request) {
+                return false;
+            }
+
+            @Override
+            public List<OutputValidationIssue> validate(OutputValidationStrategyRequest request) {
+                throw new AssertionError("Unsupported strategies must not run");
+            }
+        };
         var strategy = new OutputValidationStrategy() {
             @Override
-            public String key() {
-                return "custom";
+            public boolean supports(OutputValidationStrategyRequest request) {
+                return request.profile().profileKey().equals("assistant:v1")
+                        && request.profile().outputContract().hasAllRequiredFields(Map.of(
+                                "summary", OutputFieldType.STRING,
+                                "answer", OutputFieldType.STRING));
             }
 
             @Override
@@ -55,16 +69,18 @@ class FinalOutputValidationServiceTest {
             }
         };
         var service = new FinalOutputValidationService(
-                objectMapper, new DefaultOutputValidator(), new OutputValidationStrategyCatalog(List.of(strategy)));
+                objectMapper,
+                new DefaultOutputValidator(),
+                new OutputValidationStrategyCatalog(List.of(unsupportedStrategy, strategy)));
 
-        var result = service.validate(profile("custom"), session(), "{\"summary\":\"ok\"}");
+        var result = service.validate(profile(), session(), "{\"summary\":\"ok\"}");
 
         assertThat(result.isValid()).isFalse();
         assertThat(result.issues()).extracting(OutputValidationIssue::code)
                 .containsExactly("missing_field", "invalid_value");
     }
 
-    private AgentProfile profile(String strategyKey) {
+    private AgentProfile profile() {
         return new AgentProfile(
                 "assistant:v1",
                 "Assistant",
@@ -73,11 +89,10 @@ class FinalOutputValidationServiceTest {
                 List.of(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of(
+                OutputContract.ofRequiredFields(Map.of(
                         "summary", OutputFieldType.STRING,
                         "answer", OutputFieldType.STRING)),
                 false,
-                strategyKey,
                 true);
     }
 

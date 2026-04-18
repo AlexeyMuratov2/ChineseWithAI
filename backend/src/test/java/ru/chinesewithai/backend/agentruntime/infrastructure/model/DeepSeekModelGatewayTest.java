@@ -9,10 +9,16 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,7 +45,10 @@ class DeepSeekModelGatewayTest {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
         var gateway = new DeepSeekModelGateway(
-                new DeepSeekProperties("https://api.deepseek.com", "test-key"), builder, objectMapper);
+                new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                new AgentRuntimeProperties(false),
+                builder,
+                objectMapper);
 
         server.expect(requestTo("https://api.deepseek.com/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
@@ -73,7 +82,10 @@ class DeepSeekModelGatewayTest {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
         var gateway = new DeepSeekModelGateway(
-                new DeepSeekProperties("https://api.deepseek.com", "test-key"), builder, objectMapper);
+                new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                new AgentRuntimeProperties(false),
+                builder,
+                objectMapper);
 
         server.expect(requestTo("https://api.deepseek.com/chat/completions"))
                 .andRespond(withSuccess(
@@ -120,7 +132,10 @@ class DeepSeekModelGatewayTest {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
         var gateway = new DeepSeekModelGateway(
-                new DeepSeekProperties("https://api.deepseek.com", "test-key"), builder, objectMapper);
+                new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                new AgentRuntimeProperties(false),
+                builder,
+                objectMapper);
 
         server.expect(requestTo("https://api.deepseek.com/chat/completions"))
                 .andRespond(withSuccess(
@@ -173,7 +188,10 @@ class DeepSeekModelGatewayTest {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
         var gateway = new DeepSeekModelGateway(
-                new DeepSeekProperties("https://api.deepseek.com", "test-key"), builder, objectMapper);
+                new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                new AgentRuntimeProperties(false),
+                builder,
+                objectMapper);
 
         server.expect(requestTo("https://api.deepseek.com/chat/completions"))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED)
@@ -186,6 +204,98 @@ class DeepSeekModelGatewayTest {
         server.verify();
     }
 
+    @Test
+    void logsRequestAndResponseWhenModelIoLoggingEnabled() {
+        var logger = (Logger) LoggerFactory.getLogger(DeepSeekModelGateway.class);
+        var listAppender = new ListAppender<ILoggingEvent>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        var previousLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        try {
+            var builder = RestClient.builder();
+            var server = MockRestServiceServer.bindTo(builder).build();
+            var gateway = new DeepSeekModelGateway(
+                    new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                    new AgentRuntimeProperties(true),
+                    builder,
+                    objectMapper);
+
+            server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                    .andRespond(withSuccess(
+                            """
+                            {
+                              "choices": [
+                                {
+                                  "message": {
+                                    "role": "assistant",
+                                    "content": "{\\"logged\\":true}"
+                                  },
+                                  "finish_reason": "stop"
+                                }
+                              ]
+                            }
+                            """,
+                            MediaType.APPLICATION_JSON));
+
+            gateway.generate(request(List.of()));
+            server.verify();
+
+            var joined = listAppender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .collect(Collectors.joining("\n"));
+            assertThat(joined).contains("DeepSeek model request");
+            assertThat(joined).contains("\"model\":\"deepseek-chat\"");
+            assertThat(joined).contains("DeepSeek model response");
+            assertThat(joined).contains("\"choices\"");
+        } finally {
+            logger.detachAppender(listAppender);
+            listAppender.stop();
+            logger.setLevel(previousLevel);
+        }
+    }
+
+    @Test
+    void logsHttpErrorWhenModelIoLoggingEnabled() {
+        var logger = (Logger) LoggerFactory.getLogger(DeepSeekModelGateway.class);
+        var listAppender = new ListAppender<ILoggingEvent>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+        var previousLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
+        try {
+            var builder = RestClient.builder();
+            var server = MockRestServiceServer.bindTo(builder).build();
+            var gateway = new DeepSeekModelGateway(
+                    new DeepSeekProperties("https://api.deepseek.com", "test-key"),
+                    new AgentRuntimeProperties(true),
+                    builder,
+                    objectMapper);
+
+            server.expect(requestTo("https://api.deepseek.com/chat/completions"))
+                    .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body("{\"error\":\"invalid\"}"));
+
+            assertThatThrownBy(() -> gateway.generate(request(List.of())))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("400");
+            server.verify();
+
+            var joined = listAppender.list.stream()
+                    .map(ILoggingEvent::getFormattedMessage)
+                    .collect(Collectors.joining("\n"));
+            assertThat(joined).contains("DeepSeek model request");
+            assertThat(joined).contains("DeepSeek model error");
+            assertThat(joined).contains("400");
+            assertThat(joined).contains("invalid");
+        } finally {
+            logger.detachAppender(listAppender);
+            listAppender.stop();
+            logger.setLevel(previousLevel);
+        }
+    }
+
     private AgentModelRequest request(List<AgentToolDefinition> tools) {
         var profile = new AgentProfile(
                 "assistant:v1",
@@ -195,9 +305,8 @@ class DeepSeekModelGatewayTest {
                 tools.stream().map(AgentToolDefinition::name).toList(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 false,
-                null,
                 true);
         var session = AgentSession.createNew(
                 java.util.UUID.randomUUID(),

@@ -68,11 +68,10 @@ class AgentRuntimeOrchestratorTest {
                 List.of("get_static_test_data"),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of(
+                OutputContract.ofRequiredFields(Map.of(
                         "summary", OutputFieldType.STRING,
                         "toolMessage", OutputFieldType.STRING)),
                 false,
-                null,
                 false);
 
         var session = sessionRepository.save(AgentSession.createNew(
@@ -129,9 +128,8 @@ class AgentRuntimeOrchestratorTest {
                 List.of("get_static_test_data"),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 false,
-                null,
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
@@ -181,9 +179,8 @@ class AgentRuntimeOrchestratorTest {
                 List.of("get_static_test_data"),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 true,
-                null,
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
@@ -218,7 +215,7 @@ class AgentRuntimeOrchestratorTest {
     }
 
     @Test
-    void autoRepairEnabledFailsAfterThreeInvalidRepairAttempts() throws Exception {
+    void autoRepairEnabledFailsAfterThreeInvalidOutputAttempts() throws Exception {
         var sessionRepository = new InMemoryAgentSessionRepository();
         var stepRepository = new InMemoryAgentStepRepository();
         var gateway = new AlwaysInvalidGateway();
@@ -236,9 +233,8 @@ class AgentRuntimeOrchestratorTest {
                 List.of("get_static_test_data"),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 true,
-                null,
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
@@ -253,8 +249,8 @@ class AgentRuntimeOrchestratorTest {
 
         assertThat(executed.status()).isEqualTo(AgentSessionStatus.FAILED);
         assertThat(executed.finalOutputJson()).isNull();
-        assertThat(executed.failureReason()).contains("after 3 repair attempts");
-        assertThat(gateway.toolCounts()).containsExactly(1, 0, 0, 0);
+        assertThat(executed.failureReason()).contains("after 3 failed output attempts");
+        assertThat(gateway.toolCounts()).containsExactly(1, 0, 0);
 
         var steps = stepRepository.findBySessionIdOrderByStepIndex(executed.id());
         assertThat(steps.stream().filter(step -> step.type() == AgentStepType.OUTPUT_VALIDATION_FAILED).toList())

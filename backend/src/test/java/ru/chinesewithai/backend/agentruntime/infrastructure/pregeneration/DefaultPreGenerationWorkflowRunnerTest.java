@@ -153,9 +153,8 @@ class DefaultPreGenerationWorkflowRunnerTest {
                 List.of(),
                 new ExecutionPolicy(4),
                 new MemoryPolicy(true, 8),
-                new OutputContract(Map.of("answer", OutputFieldType.STRING)),
+                OutputContract.ofRequiredFields(Map.of("answer", OutputFieldType.STRING)),
                 false,
-                null,
                 false);
     }
 

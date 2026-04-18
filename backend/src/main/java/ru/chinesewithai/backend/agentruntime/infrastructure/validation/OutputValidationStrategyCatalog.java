@@ -1,36 +1,24 @@
 package ru.chinesewithai.backend.agentruntime.infrastructure.validation;
 
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import org.springframework.stereotype.Component;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategy;
+import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategyRequest;
 
 @Component
 public class OutputValidationStrategyCatalog {
 
-    private final Map<String, OutputValidationStrategy> strategiesByKey;
+    private final List<OutputValidationStrategy> strategies;
 
     public OutputValidationStrategyCatalog(List<OutputValidationStrategy> strategies) {
-        var indexed = new LinkedHashMap<String, OutputValidationStrategy>();
-        for (var strategy : strategies) {
-            var previous = indexed.put(strategy.key(), strategy);
-            if (previous != null) {
-                throw new IllegalStateException("Duplicate output validation strategy: " + strategy.key());
-            }
-        }
-        this.strategiesByKey = Map.copyOf(indexed);
+        this.strategies = List.copyOf(strategies);
     }
 
-    public boolean contains(String key) {
-        return strategiesByKey.containsKey(key);
-    }
-
-    public OutputValidationStrategy getRequired(String key) {
-        var strategy = strategiesByKey.get(key);
-        if (strategy == null) {
-            throw new IllegalStateException("Missing output validation strategy: " + key);
-        }
-        return strategy;
+    public List<OutputValidationStrategy> resolve(OutputValidationStrategyRequest request) {
+        return strategies.stream()
+                .filter(strategy -> strategy.supports(request))
+                .sorted(Comparator.comparingInt(OutputValidationStrategy::order))
+                .toList();
     }
 }
