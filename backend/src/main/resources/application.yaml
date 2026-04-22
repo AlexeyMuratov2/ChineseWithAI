@@ -43,6 +43,9 @@ app:
   lesson:
     generation:
       default-model-key: ${CWA_LESSON_GENERATION_DEFAULT_MODEL_KEY:deepseek-chat}
+  grammar-exercise:
+    generation:
+      default-model-key: ${CWA_GRAMMAR_EXERCISE_GENERATION_DEFAULT_MODEL_KEY:deepseek-chat}
   security:
     jwt:
       issuer: ${JWT_ISSUER:chinesewithai-backend}

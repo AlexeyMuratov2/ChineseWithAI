@@ -77,6 +77,11 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
             assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isFalse();
             assertThat(profileRs.getString("output_validation_strategy_key")).isNull();
             assertThat(profileRs.next()).isTrue();
+            assertThat(profileRs.getString("profile_key")).isEqualTo("grammar-exercise-generator:v1");
+            assertThat(profileRs.getBoolean("is_visible")).isFalse();
+            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();
+            assertThat(profileRs.getString("output_validation_strategy_key")).isEqualTo("grammar-exercise-content");
+            assertThat(profileRs.next()).isTrue();
             assertThat(profileRs.getString("profile_key")).isEqualTo("lesson-generator:hsk5_v1");
             assertThat(profileRs.getBoolean("is_visible")).isFalse();
             assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();

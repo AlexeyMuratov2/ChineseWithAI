@@ -23,8 +23,12 @@ public class FakeModelGateway implements AgentModelGateway {
     private static final String STATIC_TOOL_NAME = "get_static_test_data";
     private static final String LESSON_GENERATOR_PROFILE_KEY = "lesson-generator:v1";
     private static final String HSK5_LESSON_GENERATOR_PROFILE_KEY = "lesson-generator:hsk5_v1";
+    private static final String GRAMMAR_EXERCISE_GENERATOR_PROFILE_KEY = "grammar-exercise-generator:v1";
     private static final String INVALID_OUTPUT_MARKER = "[[INVALID_LESSON_OUTPUT]]";
     private static final String REPAIRABLE_INVALID_OUTPUT_MARKER = "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]";
+    private static final String INVALID_GRAMMAR_EXERCISE_OUTPUT_MARKER = "[[INVALID_GRAMMAR_EXERCISE_OUTPUT]]";
+    private static final String REPAIRABLE_INVALID_GRAMMAR_EXERCISE_OUTPUT_MARKER =
+            "[[REPAIRABLE_INVALID_GRAMMAR_EXERCISE_OUTPUT]]";
     private static final String REPAIR_PROMPT_MARKER = "The previous final JSON response was rejected";
     private static final String VOCABULARY_REVIEW_PLAN_MARKER = "### Vocabulary review plan";
     private static final String RETURN_FINAL_ANSWER_MARKER = "\n\nReturn the final answer";
@@ -56,6 +60,9 @@ public class FakeModelGateway implements AgentModelGateway {
         }
         if (HSK5_LESSON_GENERATOR_PROFILE_KEY.equals(request.profile().profileKey())) {
             return generateHsk5Lesson(request);
+        }
+        if (GRAMMAR_EXERCISE_GENERATOR_PROFILE_KEY.equals(request.profile().profileKey())) {
+            return generateGrammarExercise(request);
         }
 
         var toolMessage = request.messages().stream()
@@ -90,6 +97,105 @@ public class FakeModelGateway implements AgentModelGateway {
         var finalOutput = writeJson(finalOutputPayload);
         var rawPayload = writeJson(Map.of("type", "FINAL_OUTPUT", "output", readJson(finalOutput)));
         return AgentModelResponse.finalOutput(rawPayload, finalOutput);
+    }
+
+    private AgentModelResponse generateGrammarExercise(AgentModelRequest request) {
+        var input = readJson(request.session().inputJson());
+        var explanationLanguage = input.path("explanationLanguage").asText("zh");
+        var isRepairAttempt = request.messages().stream()
+                .anyMatch(message -> message.role() == AgentModelMessageRole.USER
+                        && message.content() != null
+                        && message.content().contains(REPAIR_PROMPT_MARKER));
+
+        final String finalOutput;
+        if (grammarExerciseInputContains(input, INVALID_GRAMMAR_EXERCISE_OUTPUT_MARKER)) {
+            finalOutput = writeJson(invalidGrammarExerciseOutput(explanationLanguage));
+        } else if (grammarExerciseInputContains(input, REPAIRABLE_INVALID_GRAMMAR_EXERCISE_OUTPUT_MARKER)
+                && !isRepairAttempt) {
+            finalOutput = writeJson(invalidGrammarExerciseOutput(explanationLanguage));
+        } else {
+            finalOutput = writeJson(validGrammarExerciseOutput(explanationLanguage));
+        }
+
+        var rawPayload = writeJson(Map.of("type", "FINAL_OUTPUT", "output", readJson(finalOutput)));
+        return AgentModelResponse.finalOutput(rawPayload, finalOutput);
+    }
+
+    private boolean grammarExerciseInputContains(JsonNode input, String marker) {
+        var items = input.path("items");
+        if (!items.isArray()) {
+            return false;
+        }
+        for (var item : items) {
+            if (item.path("term").asText("").contains(marker)
+                    || item.path("focus").asText("").contains(marker)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Map<String, Object> invalidGrammarExerciseOutput(String explanationLanguage) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("schemaVersion", 1);
+        output.put("explanationLanguage", explanationLanguage);
+        output.put("explanations", List.of(grammarExplanation()));
+        output.put("usageScenarios", List.of(grammarUsageScenario()));
+        output.put("exercises", List.of(completeSentenceExercise()));
+        return output;
+    }
+
+    private Map<String, Object> validGrammarExerciseOutput(String explanationLanguage) {
+        var output = new LinkedHashMap<String, Object>();
+        output.put("schemaVersion", 1);
+        output.put("explanationLanguage", explanationLanguage);
+        output.put("explanations", List.of(grammarExplanation()));
+        output.put("usageScenarios", List.of(grammarUsageScenario()));
+        output.put("exercises", List.of(completeSentenceExercise(), chooseWordExercise()));
+        return output;
+    }
+
+    private Map<String, Object> grammarExplanation() {
+        return Map.of(
+                "title", "yu",
+                "targetTerms", List.of("yu"),
+                "body", "Use this grammar point to connect a situation with a precise context.");
+    }
+
+    private Map<String, Object> grammarUsageScenario() {
+        return Map.of(
+                "title", "formal context",
+                "targetTerms", List.of("yu"),
+                "description", "Use the target expression when the sentence needs a compact formal link.",
+                "examples", List.of(Map.of(
+                        "sentence", "This grammar point appears in a formal sentence.",
+                        "translation", "This is a sample translation.",
+                        "note", "The fake model keeps content deterministic.")));
+    }
+
+    private Map<String, Object> completeSentenceExercise() {
+        return Map.of(
+                "type", "complete_sentence",
+                "title", "Complete the sentence",
+                "instruction", "Fill in the blank with a natural expression.",
+                "questions", List.of(Map.of(
+                        "id", "q1",
+                        "prompt", "The report was published ___ Monday.",
+                        "answer", "yu",
+                        "explanation", "The answer keeps the formal link in place.")));
+    }
+
+    private Map<String, Object> chooseWordExercise() {
+        return Map.of(
+                "type", "choose_word",
+                "title", "Choose the better word",
+                "instruction", "Choose the word that best fits each sentence.",
+                "options", List.of("dating", "xunwen"),
+                "questions", List.of(Map.of(
+                        "id", "q1",
+                        "sentence", "I want to ___ some informal news from a friend.",
+                        "answer", "dating",
+                        "explanation", "The sentence describes asking around informally.")));
     }
 
     private AgentModelResponse generateTestModuleLesson(AgentModelRequest request) {

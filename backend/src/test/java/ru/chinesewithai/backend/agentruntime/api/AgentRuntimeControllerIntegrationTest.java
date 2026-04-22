@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -172,6 +173,59 @@ class AgentRuntimeControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.workflowVariantKey").value("personalized-smoke"))
                 .andExpect(jsonPath("$.finalOutput.seenDisplayName").value("Alice Runtime"))
                 .andExpect(jsonPath("$.finalOutput.seenLearnerLevel").value("HSK2"));
+    }
+
+    @Test
+    void hsk5LessonGeneratorRunsProfileAndTeacherPreGenerationStepsInTrace() throws Exception {
+        register("runtime_hsk5", "StrongPass123!", "HSK5 Runtime");
+        var token = login("runtime_hsk5", "StrongPass123!");
+        var source = Map.of(
+                "id", "source-1",
+                "type", "TEXT_NOTE",
+                "position", 0,
+                "textContent", "现代生活节奏很快，我们需要保持平衡。");
+        var draft = Map.of(
+                "id", "draft-1",
+                "title", "口语结构练习",
+                "description", "HSK5 practice",
+                "userInstructions", "Make it conversational",
+                "explanationLanguage", "ru",
+                "translationLanguage", "en",
+                "sources", List.of(source));
+        var input = Map.of(
+                "draftId", "draft-1",
+                "moduleKey", "hsk5_v1",
+                "moduleSchemaVersion", 1,
+                "draft", draft,
+                "orderedSources", List.of(source));
+        var payload = objectMapper.writeValueAsString(new StartPayload(
+                "lesson-generator:hsk5_v1",
+                "fake-model",
+                "Generate a lesson JSON from the provided lesson draft.",
+                input,
+                null));
+
+        mockMvc.perform(post("/api/v1/agent-runtime/sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.profileKey").value("lesson-generator:hsk5_v1"))
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.steps[1].type").value("PRE_GENERATION_STARTED"))
+                .andExpect(jsonPath("$.steps[2].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[2].payload.stepKey").value("current-user-profile"))
+                .andExpect(jsonPath("$.steps[3].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[3].payload.stepKey").value("learner-profile-context"))
+                .andExpect(jsonPath("$.steps[3].payload.emittedSectionTitles[0]").value("Learner profile context"))
+                .andExpect(jsonPath("$.steps[3].payload.emittedArtifactKeys[0]").value("learnerProfileContext"))
+                .andExpect(jsonPath("$.steps[4].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[4].payload.stepKey").value("teacher-personality-context"))
+                .andExpect(jsonPath("$.steps[4].payload.emittedSectionTitles[0]").value("Teacher personality context"))
+                .andExpect(jsonPath("$.steps[4].payload.emittedArtifactKeys[0]").value("teacherPersonalityContext"))
+                .andExpect(jsonPath("$.steps[5].type").value("PRE_GENERATION_STEP"))
+                .andExpect(jsonPath("$.steps[5].payload.stepKey").value("lesson-vocabulary-review-plan"))
+                .andExpect(jsonPath("$.steps[6].type").value("PRE_GENERATION_COMPLETED"));
     }
 
     @Test

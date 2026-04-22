@@ -245,7 +245,12 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .isNull();
 
         var stepKeys = preGenerationStepKeys(generatorSessionId);
-        assertThat(stepKeys).containsExactly("current-user-profile", "lesson-vocabulary-review-plan");
+        assertThat(stepKeys)
+                .containsExactly(
+                        "current-user-profile",
+                        "learner-profile-context",
+                        "teacher-personality-context",
+                        "lesson-vocabulary-review-plan");
     }
 
     @Test

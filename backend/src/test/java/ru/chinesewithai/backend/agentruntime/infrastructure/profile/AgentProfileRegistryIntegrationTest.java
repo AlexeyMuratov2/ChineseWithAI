@@ -35,6 +35,7 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         var hiddenProfile = agentProfileRegistry.findByProfileKey("test-agent:v1");
         var lessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:v1");
         var hsk5LessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:hsk5_v1");
+        var grammarExerciseGeneratorProfile = agentProfileRegistry.findByProfileKey("grammar-exercise-generator:v1");
         var visibleProfiles = agentProfileRegistry.findVisibleProfiles();
 
         assertThat(hiddenProfile).isPresent();
@@ -73,6 +74,17 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
                 .containsEntry("newWords", OutputFieldType.ARRAY)
                 .containsEntry("reviewWords", OutputFieldType.ARRAY)
                 .containsEntry("sections", OutputFieldType.ARRAY);
+
+        assertThat(grammarExerciseGeneratorProfile).isPresent();
+        assertThat(grammarExerciseGeneratorProfile.orElseThrow().visible()).isFalse();
+        assertThat(grammarExerciseGeneratorProfile.orElseThrow().allowedToolNames()).isEmpty();
+        assertThat(grammarExerciseGeneratorProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
+        assertThat(grammarExerciseGeneratorProfile.orElseThrow().outputContract().requiredFields())
+                .containsEntry("schemaVersion", OutputFieldType.NUMBER)
+                .containsEntry("explanationLanguage", OutputFieldType.STRING)
+                .containsEntry("explanations", OutputFieldType.ARRAY)
+                .containsEntry("usageScenarios", OutputFieldType.ARRAY)
+                .containsEntry("exercises", OutputFieldType.ARRAY);
 
         assertThat(visibleProfiles).extracting(profile -> profile.profileKey()).containsExactly("assistant:v1");
         assertThat(visibleProfiles.getFirst().visible()).isTrue();
