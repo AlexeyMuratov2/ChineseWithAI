@@ -25,9 +25,10 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void cleanRuntimeData() {
+        jdbcTemplate.update("DELETE FROM lesson_generation_run_stages");
+        jdbcTemplate.update("DELETE FROM lesson_generation_runs");
         jdbcTemplate.update("DELETE FROM agent_steps");
         jdbcTemplate.update("DELETE FROM agent_sessions");
-        jdbcTemplate.update("DELETE FROM app_user");
     }
 
     @Test
@@ -35,7 +36,8 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
         var hiddenProfile = agentProfileRegistry.findByProfileKey("test-agent:v1");
         var lessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:v1");
         var hsk5LessonGeneratorProfile = agentProfileRegistry.findByProfileKey("lesson-generator:hsk5_v1");
-        var grammarExerciseGeneratorProfile = agentProfileRegistry.findByProfileKey("grammar-exercise-generator:v1");
+        var hsk5ComposerProfile = agentProfileRegistry.findByProfileKey("lesson-generator:hsk5_v1_composer");
+        var hsk5BlueprintProfile = agentProfileRegistry.findByProfileKey("lesson-stage:hsk5_v1_blueprint");
         var visibleProfiles = agentProfileRegistry.findVisibleProfiles();
 
         assertThat(hiddenProfile).isPresent();
@@ -75,16 +77,22 @@ class AgentProfileRegistryIntegrationTest extends AbstractIntegrationTest {
                 .containsEntry("reviewWords", OutputFieldType.ARRAY)
                 .containsEntry("sections", OutputFieldType.ARRAY);
 
-        assertThat(grammarExerciseGeneratorProfile).isPresent();
-        assertThat(grammarExerciseGeneratorProfile.orElseThrow().visible()).isFalse();
-        assertThat(grammarExerciseGeneratorProfile.orElseThrow().allowedToolNames()).isEmpty();
-        assertThat(grammarExerciseGeneratorProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
-        assertThat(grammarExerciseGeneratorProfile.orElseThrow().outputContract().requiredFields())
+        assertThat(hsk5ComposerProfile).isPresent();
+        assertThat(hsk5ComposerProfile.orElseThrow().visible()).isFalse();
+        assertThat(hsk5ComposerProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isTrue();
+        assertThat(hsk5ComposerProfile.orElseThrow().outputContract().requiredFields())
                 .containsEntry("schemaVersion", OutputFieldType.NUMBER)
-                .containsEntry("explanationLanguage", OutputFieldType.STRING)
-                .containsEntry("explanations", OutputFieldType.ARRAY)
-                .containsEntry("usageScenarios", OutputFieldType.ARRAY)
-                .containsEntry("exercises", OutputFieldType.ARRAY);
+                .containsEntry("moduleKey", OutputFieldType.STRING)
+                .containsEntry("newWords", OutputFieldType.ARRAY)
+                .containsEntry("reviewWords", OutputFieldType.ARRAY)
+                .containsEntry("sections", OutputFieldType.ARRAY);
+
+        assertThat(hsk5BlueprintProfile).isPresent();
+        assertThat(hsk5BlueprintProfile.orElseThrow().visible()).isFalse();
+        assertThat(hsk5BlueprintProfile.orElseThrow().autoRepairInvalidOutputEnabled()).isFalse();
+        assertThat(hsk5BlueprintProfile.orElseThrow().outputContract().requiredFields())
+                .containsEntry("readingText", OutputFieldType.STRING)
+                .containsEntry("grammarPoints", OutputFieldType.ARRAY);
 
         assertThat(visibleProfiles).extracting(profile -> profile.profileKey()).containsExactly("assistant:v1");
         assertThat(visibleProfiles.getFirst().visible()).isTrue();

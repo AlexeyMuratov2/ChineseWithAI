@@ -7,5 +7,5 @@ import ru.chinesewithai.backend.agentruntime.domain.model.AgentSession;
 public interface AgentSessionRepository {
     AgentSession save(AgentSession session);
 
-    Optional<AgentSession> findByIdAndOwnerId(UUID sessionId, UUID ownerId);
+    Optional<AgentSession> findById(UUID sessionId);
 }

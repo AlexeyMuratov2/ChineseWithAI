@@ -7,7 +7,6 @@ import java.util.UUID;
 
 public record AgentSessionResponse(
         UUID sessionId,
-        UUID ownerId,
         String profileKey,
         String modelKey,
         String task,

@@ -11,9 +11,11 @@ public record ValidatedLessonPayload(
         String explanationLanguage,
         String translationLanguage,
         List<LessonVocabularyWord> newWords,
+        List<LessonVocabularyWord> reviewWords,
         String contentJson) {
 
     public ValidatedLessonPayload {
         newWords = List.copyOf(newWords);
+        reviewWords = List.copyOf(reviewWords);
     }
 }

@@ -2,7 +2,6 @@ package ru.chinesewithai.backend.lessondraft.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,24 +29,23 @@ class LessonDraftRepositoryJpaAdapterIntegrationTest extends AbstractIntegration
 
     @BeforeEach
     void clean() {
+        jdbcTemplate.update("DELETE FROM lesson_generation_run_stages");
+        jdbcTemplate.update("DELETE FROM lesson_generation_runs");
         jdbcTemplate.update("DELETE FROM lesson_draft_sources");
         jdbcTemplate.update("DELETE FROM lesson_drafts");
-        jdbcTemplate.update("DELETE FROM app_user");
     }
 
     @Test
-    void saveAndFindByIdAndOwnerLoadsSources() {
-        var ownerId = insertUser("repo_user_1");
+    void saveAndFindByIdLoadsSources() {
         var now = Instant.now();
-        var draft = LessonDraft.createNew(ownerId, "Draft One", "desc", "instructions", null, null, now)
+        var draft = LessonDraft.createNew("Draft One", "desc", "instructions", null, null, now)
                 .addTextSource("note", now.plusSeconds(1))
                 .addDocumentSource(UUID.randomUUID(), "book.pdf", now.plusSeconds(2));
 
         var saved = lessonDraftRepository.save(draft);
-        var loaded = lessonDraftRepository.findByIdAndOwnerId(saved.id(), ownerId).orElseThrow();
+        var loaded = lessonDraftRepository.findById(saved.id()).orElseThrow();
 
         assertThat(loaded.id()).isEqualTo(saved.id());
-        assertThat(loaded.ownerId()).isEqualTo(ownerId);
         assertThat(loaded.sourceCount()).isEqualTo(2);
         assertThat(loaded.sources().get(0).position()).isEqualTo(0);
         assertThat(loaded.sources().get(1).position()).isEqualTo(1);
@@ -55,9 +53,8 @@ class LessonDraftRepositoryJpaAdapterIntegrationTest extends AbstractIntegration
 
     @Test
     void deleteRemovesChildSourcesByCascade() {
-        var ownerId = insertUser("repo_user_2");
         var now = Instant.now();
-        var draft = LessonDraft.createNew(ownerId, "Draft Two", null, null, null, null, now)
+        var draft = LessonDraft.createNew("Draft Two", null, null, null, null, now)
                 .addTextSource("text note", now.plusSeconds(1));
         var saved = lessonDraftRepository.save(draft);
 
@@ -71,18 +68,17 @@ class LessonDraftRepositoryJpaAdapterIntegrationTest extends AbstractIntegration
     }
 
     @Test
-    void findPageByOwnerReturnsDraftsWithCounts() {
-        var ownerId = insertUser("repo_user_3");
+    void findPageReturnsDraftsWithCounts() {
         var now = Instant.now();
-        var older = LessonDraft.createNew(ownerId, "Older", null, null, null, null, now).addTextSource("old", now.plusSeconds(1));
-        var newer = LessonDraft.createNew(ownerId, "Newer", null, null, null, null, now.plusSeconds(10))
+        var older = LessonDraft.createNew("Older", null, null, null, null, now).addTextSource("old", now.plusSeconds(1));
+        var newer = LessonDraft.createNew("Newer", null, null, null, null, now.plusSeconds(10))
                 .addTextSource("new-1", now.plusSeconds(11))
                 .addTextSource("new-2", now.plusSeconds(12));
 
         var olderSaved = lessonDraftRepository.save(older);
         var newerSaved = lessonDraftRepository.save(newer);
 
-        var page = lessonDraftRepository.findPageByOwnerId(ownerId, 0, 10);
+        var page = lessonDraftRepository.findPage(0, 10);
 
         assertThat(page.totalElements()).isEqualTo(2);
         assertThat(page.hasNext()).isFalse();
@@ -93,20 +89,4 @@ class LessonDraftRepositoryJpaAdapterIntegrationTest extends AbstractIntegration
         assertThat(page.items().get(1).sourceCount()).isEqualTo(1);
     }
 
-    private UUID insertUser(String username) {
-        var id = UUID.randomUUID();
-        var now = Instant.now();
-        jdbcTemplate.update(
-                """
-                INSERT INTO app_user (id, username, password_hash, display_name, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?)
-                """,
-                id,
-                username,
-                "hashed-password",
-                username,
-                Timestamp.from(now),
-                Timestamp.from(now));
-        return id;
-    }
 }

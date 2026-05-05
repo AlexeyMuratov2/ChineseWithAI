@@ -75,7 +75,6 @@ class AgentRuntimeOrchestratorTest {
                 false);
 
         var session = sessionRepository.save(AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 FAKE_MODEL.modelKey(),
                 "Run a smoke test",
@@ -133,7 +132,6 @@ class AgentRuntimeOrchestratorTest {
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 FAKE_MODEL.modelKey(),
                 "Answer briefly",
@@ -184,7 +182,6 @@ class AgentRuntimeOrchestratorTest {
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 FAKE_MODEL.modelKey(),
                 "Answer briefly",
@@ -238,7 +235,6 @@ class AgentRuntimeOrchestratorTest {
                 true);
 
         var session = sessionRepository.save(AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 FAKE_MODEL.modelKey(),
                 "Answer briefly",
@@ -370,8 +366,8 @@ class AgentRuntimeOrchestratorTest {
         }
 
         @Override
-        public Optional<AgentSession> findByIdAndOwnerId(UUID sessionId, UUID ownerId) {
-            return Optional.ofNullable(sessions.get(sessionId)).filter(session -> session.ownerId().equals(ownerId));
+        public Optional<AgentSession> findById(UUID sessionId) {
+            return Optional.ofNullable(sessions.get(sessionId));
         }
     }
 

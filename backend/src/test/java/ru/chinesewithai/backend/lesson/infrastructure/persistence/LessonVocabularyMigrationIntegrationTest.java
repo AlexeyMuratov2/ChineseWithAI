@@ -61,15 +61,21 @@ class LessonVocabularyMigrationIntegrationTest extends AbstractIntegrationTest {
                             + schema
                             + "' AND conname IN ("
                             + "'fk_lesson_vocabulary_items_lesson_id',"
-                            + "'fk_lesson_vocabulary_items_user_id',"
                             + "'chk_learner_vocabulary_progress_status'"
                             + ") ORDER BY conname")) {
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getString("conname")).isEqualTo("chk_learner_vocabulary_progress_status");
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getString("conname")).isEqualTo("fk_lesson_vocabulary_items_lesson_id");
-                assertThat(rs.next()).isTrue();
-                assertThat(rs.getString("conname")).isEqualTo("fk_lesson_vocabulary_items_user_id");
+                assertThat(rs.next()).isFalse();
+            }
+
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = '"
+                            + schema
+                            + "' AND table_name IN ('lesson_vocabulary_items', 'learner_vocabulary_progress') "
+                            + "AND column_name = 'user_id'")) {
+                assertThat(rs.next()).isFalse();
             }
 
             try (ResultSet rs = statement.executeQuery(
@@ -77,12 +83,16 @@ class LessonVocabularyMigrationIntegrationTest extends AbstractIntegrationTest {
                             + schema
                             + "' AND indexname IN ("
                             + "'uq_lesson_vocabulary_items_lesson_word',"
-                            + "'uq_learner_vocabulary_progress_user_word'"
+                            + "'idx_learner_vocabulary_progress_word_lookup',"
+                            + "'idx_learner_vocabulary_progress_review_lookup'"
                             + ") ORDER BY indexname")) {
                 assertThat(rs.next()).isTrue();
-                assertThat(rs.getString("indexname")).isEqualTo("uq_learner_vocabulary_progress_user_word");
+                assertThat(rs.getString("indexname")).isEqualTo("idx_learner_vocabulary_progress_review_lookup");
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString("indexname")).isEqualTo("idx_learner_vocabulary_progress_word_lookup");
                 assertThat(rs.next()).isTrue();
                 assertThat(rs.getString("indexname")).isEqualTo("uq_lesson_vocabulary_items_lesson_word");
+                assertThat(rs.next()).isFalse();
             }
 
             try (ResultSet rs = statement.executeQuery(

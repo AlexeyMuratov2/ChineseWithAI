@@ -43,14 +43,6 @@ app:
   lesson:
     generation:
       default-model-key: ${CWA_LESSON_GENERATION_DEFAULT_MODEL_KEY:deepseek-chat}
-  grammar-exercise:
-    generation:
-      default-model-key: ${CWA_GRAMMAR_EXERCISE_GENERATION_DEFAULT_MODEL_KEY:deepseek-chat}
-  security:
-    jwt:
-      issuer: ${JWT_ISSUER:chinesewithai-backend}
-      secret: ${JWT_SECRET:very-secure-development-secret-change-in-production-12345}
-      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
   # S3-compatible storage (MinIO locally via docker-compose at repo root). Override with CWA_S3_* for real S3.
   stored-file:
     s3:

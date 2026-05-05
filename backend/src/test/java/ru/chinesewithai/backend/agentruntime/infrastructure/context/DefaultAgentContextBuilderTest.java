@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentContextBuildRequest;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationContextSection;
@@ -38,7 +37,6 @@ class DefaultAgentContextBuilderTest {
                 false,
                 false);
         var session = AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 "fake-model",
                 "Generate a lesson",
@@ -66,7 +64,6 @@ class DefaultAgentContextBuilderTest {
                 false,
                 true);
         var session = AgentSession.createNew(
-                UUID.randomUUID(),
                 profile.profileKey(),
                 "fake-model",
                 "Answer the user",
@@ -75,7 +72,7 @@ class DefaultAgentContextBuilderTest {
         var state = new PreGenerationState(
                 List.of(
                         new PreGenerationContextSection(
-                                PreGenerationContextSectionTarget.SYSTEM, "Current user profile", "displayName: Alice"),
+                                PreGenerationContextSectionTarget.SYSTEM, "Learner profile", "displayName: Alice"),
                         new PreGenerationContextSection(
                                 PreGenerationContextSectionTarget.USER, "Learner level", "learnerLevel: HSK2")),
                 Map.of());

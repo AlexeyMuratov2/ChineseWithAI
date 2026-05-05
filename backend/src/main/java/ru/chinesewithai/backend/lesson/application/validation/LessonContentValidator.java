@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import ru.chinesewithai.backend.lesson.application.exception.LessonContentValidationException;
@@ -40,6 +41,9 @@ public class LessonContentValidator {
         var explanationLanguage = requireLanguage(root.get("explanationLanguage"), "explanationLanguage");
         var translationLanguage = requireLanguage(root.get("translationLanguage"), "translationLanguage");
         var newWords = readNewWords(requireArray(root.get("newWords"), "newWords"));
+        var reviewWords = root.has("reviewWords")
+                ? readWords(requireArray(root.get("reviewWords"), "reviewWords"), "reviewWords")
+                : List.<LessonVocabularyWord>of();
         requireArray(root.get("sections"), "sections");
 
         if (module != null) {
@@ -63,20 +67,25 @@ public class LessonContentValidator {
                 explanationLanguage.value(),
                 translationLanguage.value(),
                 newWords,
+                reviewWords,
                 writeJson(root));
     }
 
     private java.util.List<LessonVocabularyWord> readNewWords(JsonNode newWordsNode) {
-        var newWords = new ArrayList<LessonVocabularyWord>(newWordsNode.size());
-        for (int i = 0; i < newWordsNode.size(); i++) {
-            var wordNode = newWordsNode.get(i);
+        return readWords(newWordsNode, "newWords");
+    }
+
+    private java.util.List<LessonVocabularyWord> readWords(JsonNode wordsNode, String fieldName) {
+        var newWords = new ArrayList<LessonVocabularyWord>(wordsNode.size());
+        for (int i = 0; i < wordsNode.size(); i++) {
+            var wordNode = wordsNode.get(i);
             if (wordNode == null || !wordNode.isObject()) {
-                throw new LessonContentValidationException("newWords[" + i + "] must be an object");
+                throw new LessonContentValidationException(fieldName + "[" + i + "] must be an object");
             }
             newWords.add(new LessonVocabularyWord(
-                    requireText(wordNode.get("word"), "newWords[" + i + "].word", 255),
-                    requireText(wordNode.get("pinyin"), "newWords[" + i + "].pinyin", 255),
-                    requireText(wordNode.get("translation"), "newWords[" + i + "].translation", 500)));
+                    requireText(wordNode.get("word"), fieldName + "[" + i + "].word", 255),
+                    requireText(wordNode.get("pinyin"), fieldName + "[" + i + "].pinyin", 255),
+                    requireText(wordNode.get("translation"), fieldName + "[" + i + "].translation", 500)));
         }
         return java.util.List.copyOf(newWords);
     }

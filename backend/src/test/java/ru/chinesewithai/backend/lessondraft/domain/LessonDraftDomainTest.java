@@ -15,8 +15,7 @@ class LessonDraftDomainTest {
 
     @Test
     void createNewUsesDefaultLanguages() {
-        var draft = LessonDraft.createNew(
-                UUID.randomUUID(), "My draft", "description", "instructions", null, null, Instant.now());
+        var draft = LessonDraft.createNew("My draft", "description", "instructions", null, null, Instant.now());
 
         assertThat(draft.explanationLanguage().value()).isEqualTo("zh");
         assertThat(draft.translationLanguage().value()).isEqualTo("en");
@@ -26,9 +25,8 @@ class LessonDraftDomainTest {
     @Test
     void removeSourceReindexesPositions() {
         var now = Instant.now();
-        var ownerId = UUID.randomUUID();
         var draft = LessonDraft.createNew(
-                        ownerId, "My draft", null, null, LanguageTag.of("zh"), LanguageTag.of("en"), now)
+                        "My draft", null, null, LanguageTag.of("zh"), LanguageTag.of("en"), now)
                 .addTextSource("text-1", now.plusSeconds(10))
                 .addTextSource("text-2", now.plusSeconds(20))
                 .addDocumentSource(UUID.randomUUID(), "file.pdf", now.plusSeconds(30));
@@ -45,8 +43,7 @@ class LessonDraftDomainTest {
     @Test
     void reorderRequiresExactSourceSet() {
         var now = Instant.now();
-        var ownerId = UUID.randomUUID();
-        var draft = LessonDraft.createNew(ownerId, "Draft", null, null, null, null, now)
+        var draft = LessonDraft.createNew("Draft", null, null, null, null, now)
                 .addTextSource("text-1", now.plusSeconds(1))
                 .addTextSource("text-2", now.plusSeconds(2));
 
@@ -60,8 +57,7 @@ class LessonDraftDomainTest {
     @Test
     void textSourceRejectsBlankText() {
         var now = Instant.now();
-        var ownerId = UUID.randomUUID();
-        var draft = LessonDraft.createNew(ownerId, "Draft", null, null, null, null, now);
+        var draft = LessonDraft.createNew("Draft", null, null, null, null, now);
 
         assertThatThrownBy(() -> draft.addTextSource("   ", now.plusSeconds(1)))
                 .isInstanceOf(IllegalArgumentException.class)

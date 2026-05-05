@@ -13,6 +13,8 @@ import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidati
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 import ru.chinesewithai.backend.lesson.application.exception.LessonContentValidationException;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonModuleRepository;
+import ru.chinesewithai.backend.lesson.application.validation.Hsk5GeneratedLessonQualityValidator;
+import ru.chinesewithai.backend.lesson.application.validation.Hsk5V1LessonStrategy;
 import ru.chinesewithai.backend.lesson.application.validation.LessonContentValidator;
 import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 
@@ -20,6 +22,7 @@ import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 public class LessonGeneratedContentOutputValidationStrategy implements OutputValidationStrategy {
 
     private static final String PROFILE_KEY_PREFIX = "lesson-generator:";
+    private static final String HSK5_COMPOSER_PROFILE_KEY = "lesson-generator:hsk5_v1_composer";
     private static final String VALIDATOR_KEY = "lesson-generated-content";
     private static final Map<String, OutputFieldType> REQUIRED_FIELDS = Map.of(
             "schemaVersion", OutputFieldType.NUMBER,
@@ -32,14 +35,17 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
 
     private final LessonContentValidator lessonContentValidator;
     private final LessonModuleRepository lessonModuleRepository;
+    private final Hsk5GeneratedLessonQualityValidator hsk5GeneratedLessonQualityValidator;
     private final ObjectMapper objectMapper;
 
     public LessonGeneratedContentOutputValidationStrategy(
             LessonContentValidator lessonContentValidator,
             LessonModuleRepository lessonModuleRepository,
+            Hsk5GeneratedLessonQualityValidator hsk5GeneratedLessonQualityValidator,
             ObjectMapper objectMapper) {
         this.lessonContentValidator = lessonContentValidator;
         this.lessonModuleRepository = lessonModuleRepository;
+        this.hsk5GeneratedLessonQualityValidator = hsk5GeneratedLessonQualityValidator;
         this.objectMapper = objectMapper;
     }
 
@@ -51,12 +57,21 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
 
     @Override
     public List<OutputValidationIssue> validate(OutputValidationStrategyRequest request) {
+        var module = resolveModule(request);
         try {
-            lessonContentValidator.validate(request.rawOutputJson(), resolveModule(request));
+            lessonContentValidator.validate(request.rawOutputJson(), module);
+            if (isHsk5Composer(request, module)) {
+                hsk5GeneratedLessonQualityValidator.validate(request.output(), readSourceText(request.sessionInputJson()));
+            }
             return List.of();
         } catch (LessonContentValidationException ex) {
-            return List.of(mapIssue(ex.getMessage(), request.output(), resolveModule(request)));
+            return List.of(mapIssue(ex.getMessage(), request.output(), module));
         }
+    }
+
+    private boolean isHsk5Composer(OutputValidationStrategyRequest request, LessonModule module) {
+        return HSK5_COMPOSER_PROFILE_KEY.equals(request.profile().profileKey())
+                && Hsk5V1LessonStrategy.MODULE_KEY.equals(module.moduleKey());
     }
 
     private LessonModule resolveModule(OutputValidationStrategyRequest request) {
@@ -74,6 +89,22 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
                 throw new IllegalStateException("Lesson generation session is missing moduleKey in inputJson");
             }
             return moduleKey;
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Lesson generation session inputJson must be valid JSON", ex);
+        }
+    }
+
+    private String readSourceText(String rawInputJson) {
+        try {
+            var root = objectMapper.readTree(rawInputJson);
+            var sourceText = root == null ? null : root.path("sourceText").asText(null);
+            if (sourceText == null || sourceText.isBlank()) {
+                sourceText = root == null ? null : root.path("draft").path("sources").path(0).path("textContent").asText(null);
+            }
+            if (sourceText == null || sourceText.isBlank()) {
+                throw new IllegalStateException("Composer session is missing sourceText in inputJson");
+            }
+            return sourceText.trim();
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Lesson generation session inputJson must be valid JSON", ex);
         }

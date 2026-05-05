@@ -1,7 +1,7 @@
 package ru.chinesewithai.backend.lesson.infrastructure.persistence;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Repository;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonRepository;
 import ru.chinesewithai.backend.lesson.domain.model.Lesson;
@@ -24,7 +24,14 @@ public class LessonRepositoryJpaAdapter implements LessonRepository {
     }
 
     @Override
-    public Optional<Lesson> findByIdAndOwnerId(LessonId lessonId, UUID ownerId) {
-        return repository.findByIdAndOwnerId(lessonId.value(), ownerId).map(mapper::toDomain);
+    public Optional<Lesson> findById(LessonId lessonId) {
+        return repository.findById(lessonId.value()).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Lesson> findAllByModuleKeyOrderByCreatedAtDesc(String moduleKey) {
+        return repository.findAllByModuleKeyOrderByCreatedAtDesc(moduleKey).stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

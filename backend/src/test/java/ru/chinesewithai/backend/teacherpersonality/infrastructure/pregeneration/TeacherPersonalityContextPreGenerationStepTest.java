@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationContextSectionTarget;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationState;
@@ -72,7 +71,6 @@ class TeacherPersonalityContextPreGenerationStepTest {
         return new PreGenerationStepRequest(
                 profile(profileKey),
                 AgentSession.createNew(
-                        UUID.randomUUID(),
                         profileKey,
                         "fake-model",
                         "Generate lesson",

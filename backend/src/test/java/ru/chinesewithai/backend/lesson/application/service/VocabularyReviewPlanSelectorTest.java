@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.lesson.application.port.out.LearnerVocabularyProgressRepository;
 import ru.chinesewithai.backend.lesson.domain.model.LanguageTag;
@@ -15,7 +14,6 @@ import ru.chinesewithai.backend.lesson.domain.model.LearnerVocabularyStatus;
 
 class VocabularyReviewPlanSelectorTest {
 
-    private static final UUID USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final LanguageTag TRANSLATION_LANGUAGE = LanguageTag.of("en");
     private static final Instant NOW = Instant.parse("2026-04-18T10:15:30Z");
 
@@ -39,7 +37,7 @@ class VocabularyReviewPlanSelectorTest {
                         Instant.parse("2026-04-02T00:00:00Z"),
                         Instant.parse("2026-04-16T00:00:00Z")))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).extracting(item -> item.hanzi()).contains("认识");
     }
@@ -64,7 +62,7 @@ class VocabularyReviewPlanSelectorTest {
                         Instant.parse("2026-04-01T00:00:00Z"),
                         Instant.parse("2026-04-10T00:00:00Z")))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).extracting(item -> item.hanzi()).doesNotContain("认识");
         assertThat(plan.shouldReview()).extracting(item -> item.hanzi()).doesNotContain("认识");
@@ -81,7 +79,7 @@ class VocabularyReviewPlanSelectorTest {
                 Instant.parse("2026-04-10T00:00:00Z"),
                 null))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).singleElement().extracting(item -> item.masteryScore()).isEqualTo(0.3d);
     }
@@ -94,7 +92,7 @@ class VocabularyReviewPlanSelectorTest {
                 progress("三", "sān", "three", LearnerVocabularyStatus.REVIEW, 0.8d, Instant.parse("2026-04-03T00:00:00Z"),
                         Instant.parse("2026-04-10T00:00:00Z")))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).hasSize(3);
         assertThat(plan.shouldReview()).isEmpty();
@@ -110,7 +108,7 @@ class VocabularyReviewPlanSelectorTest {
                 progress("三", "sān", "three", LearnerVocabularyStatus.REVIEW, 0.4d, Instant.parse("2026-04-01T00:00:00Z"),
                         Instant.parse("2026-04-10T00:00:00Z")))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).extracting(item -> item.hanzi()).containsExactly("三");
         assertThat(plan.shouldReview()).isEmpty();
@@ -144,7 +142,7 @@ class VocabularyReviewPlanSelectorTest {
                 progress("十二", "shí’èr", "twelve", LearnerVocabularyStatus.LEARNING, 0.1d,
                         Instant.parse("2026-03-12T00:00:00Z"), Instant.parse("2026-03-13T00:00:00Z")))));
 
-        var plan = selector.select(USER_ID, TRANSLATION_LANGUAGE, NOW);
+        var plan = selector.select(TRANSLATION_LANGUAGE, NOW);
 
         assertThat(plan.mustReview()).hasSize(4);
         assertThat(plan.shouldReview()).hasSize(6);
@@ -160,7 +158,6 @@ class VocabularyReviewPlanSelectorTest {
             Instant lastReviewedAt) {
         return LearnerVocabularyProgress.reconstitute(
                 null,
-                USER_ID,
                 hanzi,
                 pinyin,
                 translation,
@@ -178,10 +175,9 @@ class VocabularyReviewPlanSelectorTest {
             implements LearnerVocabularyProgressRepository {
 
         @Override
-        public Optional<LearnerVocabularyProgress> findByUserIdAndHanziAndPinyinAndTranslationLanguage(
-                UUID userId, String hanzi, String pinyin, LanguageTag translationLanguage) {
+        public Optional<LearnerVocabularyProgress> findByHanziAndPinyinAndTranslationLanguage(
+                String hanzi, String pinyin, LanguageTag translationLanguage) {
             return items.stream()
-                    .filter(item -> item.userId().equals(userId))
                     .filter(item -> item.hanzi().equals(hanzi))
                     .filter(item -> item.pinyin().equals(pinyin))
                     .filter(item -> item.translationLanguage().equals(translationLanguage))
@@ -194,10 +190,9 @@ class VocabularyReviewPlanSelectorTest {
         }
 
         @Override
-        public List<LearnerVocabularyProgress> findByUserIdAndTranslationLanguageAndStatusIn(
-                UUID userId, LanguageTag translationLanguage, Set<LearnerVocabularyStatus> statuses) {
+        public List<LearnerVocabularyProgress> findByTranslationLanguageAndStatusIn(
+                LanguageTag translationLanguage, Set<LearnerVocabularyStatus> statuses) {
             return items.stream()
-                    .filter(item -> item.userId().equals(userId))
                     .filter(item -> item.translationLanguage().equals(translationLanguage))
                     .filter(item -> statuses.contains(item.status()))
                     .toList();

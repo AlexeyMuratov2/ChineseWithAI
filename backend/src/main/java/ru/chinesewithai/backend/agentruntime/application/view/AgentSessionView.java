@@ -6,7 +6,6 @@ import java.util.UUID;
 
 public record AgentSessionView(
         UUID sessionId,
-        UUID ownerId,
         String profileKey,
         String modelKey,
         String task,

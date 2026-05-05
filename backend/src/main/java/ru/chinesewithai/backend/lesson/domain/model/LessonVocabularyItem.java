@@ -2,13 +2,11 @@ package ru.chinesewithai.backend.lesson.domain.model;
 
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 
 public final class LessonVocabularyItem {
 
     private final Long id;
     private final LessonId lessonId;
-    private final UUID userId;
     private final String hanzi;
     private final String pinyin;
     private final String translation;
@@ -18,7 +16,6 @@ public final class LessonVocabularyItem {
     private LessonVocabularyItem(
             Long id,
             LessonId lessonId,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -29,7 +26,6 @@ public final class LessonVocabularyItem {
         }
         this.id = id;
         this.lessonId = Objects.requireNonNull(lessonId, "lessonId must not be null");
-        this.userId = Objects.requireNonNull(userId, "userId must not be null");
         this.hanzi = requireText(hanzi, "hanzi");
         this.pinyin = requireText(pinyin, "pinyin");
         this.translation = requireText(translation, "translation");
@@ -39,25 +35,23 @@ public final class LessonVocabularyItem {
 
     public static LessonVocabularyItem createNew(
             LessonId lessonId,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
             LanguageTag translationLanguage,
             Instant createdAt) {
-        return new LessonVocabularyItem(null, lessonId, userId, hanzi, pinyin, translation, translationLanguage, createdAt);
+        return new LessonVocabularyItem(null, lessonId, hanzi, pinyin, translation, translationLanguage, createdAt);
     }
 
     public static LessonVocabularyItem reconstitute(
             Long id,
             LessonId lessonId,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
             LanguageTag translationLanguage,
             Instant createdAt) {
-        return new LessonVocabularyItem(id, lessonId, userId, hanzi, pinyin, translation, translationLanguage, createdAt);
+        return new LessonVocabularyItem(id, lessonId, hanzi, pinyin, translation, translationLanguage, createdAt);
     }
 
     public Long id() {
@@ -66,10 +60,6 @@ public final class LessonVocabularyItem {
 
     public LessonId lessonId() {
         return lessonId;
-    }
-
-    public UUID userId() {
-        return userId;
     }
 
     public String hanzi() {

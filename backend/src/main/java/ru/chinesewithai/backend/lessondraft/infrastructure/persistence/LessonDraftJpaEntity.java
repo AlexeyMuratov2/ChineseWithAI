@@ -21,9 +21,6 @@ public class LessonDraftJpaEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "owner_id", nullable = false, updatable = false)
-    private UUID ownerId;
-
     @Column(name = "title", nullable = false, length = 160)
     private String title;
 
@@ -57,7 +54,6 @@ public class LessonDraftJpaEntity {
 
     public LessonDraftJpaEntity(
             UUID id,
-            UUID ownerId,
             String title,
             String description,
             String userInstructions,
@@ -67,7 +63,6 @@ public class LessonDraftJpaEntity {
             Instant updatedAt,
             long version) {
         this.id = id;
-        this.ownerId = ownerId;
         this.title = title;
         this.description = description;
         this.userInstructions = userInstructions;
@@ -92,10 +87,6 @@ public class LessonDraftJpaEntity {
 
     public UUID getId() {
         return id;
-    }
-
-    public UUID getOwnerId() {
-        return ownerId;
     }
 
     public String getTitle() {

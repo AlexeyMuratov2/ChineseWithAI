@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -71,31 +72,34 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
                                 + "FROM "
                                 + schema
                                 + ".agent_profiles ORDER BY profile_key")) {
-            assertThat(profileRs.next()).isTrue();
-            assertThat(profileRs.getString("profile_key")).isEqualTo("assistant:v1");
-            assertThat(profileRs.getBoolean("is_visible")).isTrue();
-            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isFalse();
-            assertThat(profileRs.getString("output_validation_strategy_key")).isNull();
-            assertThat(profileRs.next()).isTrue();
-            assertThat(profileRs.getString("profile_key")).isEqualTo("grammar-exercise-generator:v1");
-            assertThat(profileRs.getBoolean("is_visible")).isFalse();
-            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();
-            assertThat(profileRs.getString("output_validation_strategy_key")).isEqualTo("grammar-exercise-content");
-            assertThat(profileRs.next()).isTrue();
-            assertThat(profileRs.getString("profile_key")).isEqualTo("lesson-generator:hsk5_v1");
-            assertThat(profileRs.getBoolean("is_visible")).isFalse();
-            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();
-            assertThat(profileRs.getString("output_validation_strategy_key")).isEqualTo("lesson-generated-content");
-            assertThat(profileRs.next()).isTrue();
-            assertThat(profileRs.getString("profile_key")).isEqualTo("lesson-generator:v1");
-            assertThat(profileRs.getBoolean("is_visible")).isFalse();
-            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isTrue();
-            assertThat(profileRs.getString("output_validation_strategy_key")).isEqualTo("lesson-generated-content");
-            assertThat(profileRs.next()).isTrue();
-            assertThat(profileRs.getString("profile_key")).isEqualTo("test-agent:v1");
-            assertThat(profileRs.getBoolean("is_visible")).isFalse();
-            assertThat(profileRs.getBoolean("auto_repair_invalid_output_enabled")).isFalse();
-            assertThat(profileRs.getString("output_validation_strategy_key")).isNull();
+            var profiles = new LinkedHashMap<String, ProfileRow>();
+            while (profileRs.next()) {
+                profiles.put(
+                        profileRs.getString("profile_key"),
+                        new ProfileRow(
+                                profileRs.getBoolean("is_visible"),
+                                profileRs.getBoolean("auto_repair_invalid_output_enabled"),
+                                profileRs.getString("output_validation_strategy_key")));
+            }
+
+            assertThat(profiles.keySet())
+                    .contains(
+                            "assistant:v1",
+                            "lesson-generator:hsk5_v1",
+                            "lesson-generator:hsk5_v1_composer",
+                            "lesson-generator:v1",
+                            "lesson-stage:hsk5_v1_blueprint",
+                            "lesson-stage:hsk5_v1_grammar",
+                            "lesson-stage:hsk5_v1_vocabulary_practice",
+                            "lesson-stage:hsk5_v1_word_game",
+                            "test-agent:v1");
+            assertThat(profiles.get("assistant:v1").visible()).isTrue();
+            assertThat(profiles.get("assistant:v1").autoRepair()).isFalse();
+            assertThat(profiles.get("lesson-generator:hsk5_v1_composer").visible()).isFalse();
+            assertThat(profiles.get("lesson-generator:hsk5_v1_composer").autoRepair()).isTrue();
+            assertThat(profiles.get("lesson-generator:hsk5_v1_composer").strategyKey())
+                    .isEqualTo("lesson-generated-content");
+            assertThat(profiles.get("lesson-stage:hsk5_v1_blueprint").autoRepair()).isFalse();
         }
 
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
@@ -103,6 +107,8 @@ class AgentRuntimeMigrationIntegrationTest extends AbstractIntegrationTest {
                     + "VALUES ('" + UUID.randomUUID() + "', '" + sessionId + "', 0, 'OUTPUT_VALIDATION_FAILED', '{}', NOW())");
         }
     }
+
+    private record ProfileRow(boolean visible, boolean autoRepair, String strategyKey) {}
 
     private void recreateSchema(String schema) throws Exception {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {

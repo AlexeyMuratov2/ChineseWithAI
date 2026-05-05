@@ -1,6 +1,5 @@
 package ru.chinesewithai.backend.storedfile.api;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -10,9 +9,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import ru.chinesewithai.backend.config.OpenApiConfig;
 import ru.chinesewithai.backend.storedfile.api.dto.CreateUploadSessionRequest;
 import ru.chinesewithai.backend.storedfile.api.dto.CreateUploadSessionResponse;
 import ru.chinesewithai.backend.storedfile.api.dto.StoredFileMetadataResponse;
@@ -40,7 +35,6 @@ import ru.chinesewithai.backend.storedfile.domain.model.StoredFileId;
  * types here.
  */
 @RestController
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH_SCHEME)
 @RequestMapping("/api/v1/stored-files")
 public class StoredFileController {
 
@@ -78,20 +72,17 @@ public class StoredFileController {
             @PathVariable UUID sessionId,
             @RequestHeader(value = HttpHeaders.CONTENT_TYPE, required = false) String contentType,
             @RequestHeader(value = HEADER_ORIGINAL_FILE_NAME, required = false) String originalFileName,
-            HttpServletRequest request,
-            Authentication authentication)
+            HttpServletRequest request)
             throws IOException {
         long length = request.getContentLengthLong();
         if (length < 0) {
             return ResponseEntity.status(HttpStatus.LENGTH_REQUIRED).build();
         }
-        var principal = resolvePrincipalId(authentication);
         var meta = storedFiles.receiveSessionUpload(
                 new FileUploadSessionId(sessionId),
                 length,
                 Optional.ofNullable(contentType),
                 Optional.ofNullable(originalFileName),
-                principal,
                 request.getInputStream());
         return ResponseEntity.ok(StoredFileMetadataResponse.from(meta));
     }
@@ -127,21 +118,4 @@ public class StoredFileController {
         };
     }
 
-    /**
-     * Uses JWT credentials instead of user-module principal types so this module stays free of
-     * {@code user} package dependencies while still passing subject id into security strategies.
-     */
-    private static Optional<UUID> resolvePrincipalId(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return Optional.empty();
-        }
-        if (authentication.getCredentials() instanceof Jwt jwt) {
-            try {
-                return Optional.of(UUID.fromString(jwt.getSubject()));
-            } catch (IllegalArgumentException ignored) {
-                return Optional.empty();
-            }
-        }
-        return Optional.empty();
-    }
 }

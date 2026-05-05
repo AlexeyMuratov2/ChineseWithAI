@@ -19,7 +19,7 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
     private static final String ANSWER_WORD_FIELD = "answerWord";
     private static final String EXPECTED_WORD_ALIAS = "expectedWord";
     private static final Set<String> ALLOWED_SECTION_TYPES =
-            Set.of("word_study", "conversation", "text", "word_game");
+            Set.of("word_study", "conversation", "text", "word_game", "grammar");
     private static final Set<String> ALLOWED_CONVERSATION_MODES =
             Set.of("make_sentence", "perform", "free_talk");
     private static final Set<String> ALLOWED_VOCABULARY_STATUSES = Set.of("new", "review");
@@ -63,8 +63,9 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
                 - The learner level is HSK5, so do not translate the reading text. Keep the tone natural and alive.
                 - newWords and reviewWords must both be present as arrays of {word, pinyin, translation}.
                 - Use review vocabulary from vocabularyReviewPlan when available. Put practiced review words in reviewWords.
-                - sections is an array of blocks in any order. Use only these block types: word_study, conversation, text, word_game.
+                - sections is an array of blocks in any order. Use only these block types: word_study, grammar, conversation, text, word_game.
                 - Add a text block with title, text, readingPrompt, and discussionPrompts. Prefer the draft TEXT_NOTE content in text. Do not add a translation field unless it is necessary for a graceful fallback.
+                - Add a grammar block with title and points. Each point has name, pattern, explanation, examples, and exercises. Grammar examples use sentence, translation, and optional notes. Grammar exercises use prompt and optional answerHint/sampleAnswer.
                 - Add a conversation block with title, mode, prompt, and followUpPrompts. mode should be make_sentence, perform, or free_talk.
                 - Add a word_game block with title, instructions, and rounds. Each round should use exactly these field names: prompt, answerWord, vocabularyStatus. Do not use expectedWord.
                 - Add word_study blocks for newWords and reviewWords. Use vocabularyStatus "new" or "review".
@@ -93,6 +94,7 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
             case "conversation" -> validateConversationSection(section, path);
             case "text" -> validateTextSection(section, path);
             case "word_game" -> validateWordGameSection(section, path);
+            case "grammar" -> validateGrammarSection(section, path);
             default -> throw new IllegalStateException("Unhandled hsk5_v1 section type: " + type);
         }
     }
@@ -137,6 +139,54 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
             requireTextField(round, path + ".rounds[" + i + "]", ANSWER_WORD_FIELD, EXPECTED_WORD_ALIAS);
             validateOptionalOneOf(
                     round.get("vocabularyStatus"), path + ".rounds[" + i + "].vocabularyStatus", ALLOWED_VOCABULARY_STATUSES);
+        }
+    }
+
+    private void validateGrammarSection(JsonNode section, String path) {
+        requireText(section.get("title"), path + ".title");
+        var points = requireArray(section.get("points"), path + ".points");
+        if (points.isEmpty()) {
+            throw new LessonContentValidationException(path + ".points must not be empty");
+        }
+        for (int i = 0; i < points.size(); i++) {
+            var point = requireObject(points.get(i), path + ".points[" + i + "]");
+            requireText(point.get("name"), path + ".points[" + i + "].name");
+            requireText(point.get("pattern"), path + ".points[" + i + "].pattern");
+            requireText(point.get("explanation"), path + ".points[" + i + "].explanation");
+            validateGrammarExamples(requireArray(point.get("examples"), path + ".points[" + i + "].examples"),
+                    path + ".points[" + i + "].examples");
+            validateGrammarExercises(requireArray(point.get("exercises"), path + ".points[" + i + "].exercises"),
+                    path + ".points[" + i + "].exercises");
+        }
+    }
+
+    private void validateGrammarExamples(JsonNode examples, String path) {
+        if (examples.isEmpty()) {
+            throw new LessonContentValidationException(path + " must not be empty");
+        }
+        for (int i = 0; i < examples.size(); i++) {
+            var example = requireObject(examples.get(i), path + "[" + i + "]");
+            requireText(example.get("sentence"), path + "[" + i + "].sentence");
+            requireText(example.get("translation"), path + "[" + i + "].translation");
+            validateOptionalTextArray(example.get("notes"), path + "[" + i + "].notes");
+        }
+    }
+
+    private void validateGrammarExercises(JsonNode exercises, String path) {
+        if (exercises.isEmpty()) {
+            throw new LessonContentValidationException(path + " must not be empty");
+        }
+        for (int i = 0; i < exercises.size(); i++) {
+            var exercise = requireObject(exercises.get(i), path + "[" + i + "]");
+            requireText(exercise.get("prompt"), path + "[" + i + "].prompt");
+            validateOptionalText(exercise.get("answerHint"), path + "[" + i + "].answerHint");
+            validateOptionalText(exercise.get("sampleAnswer"), path + "[" + i + "].sampleAnswer");
+        }
+    }
+
+    private void validateOptionalText(JsonNode node, String path) {
+        if (node != null && !node.isNull()) {
+            requireText(node, path);
         }
     }
 

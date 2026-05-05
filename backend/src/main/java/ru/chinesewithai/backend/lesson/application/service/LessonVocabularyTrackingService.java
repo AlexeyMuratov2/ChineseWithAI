@@ -36,7 +36,6 @@ public class LessonVocabularyTrackingService {
         lessonVocabularyItemRepository.saveAll(uniqueWords.values().stream()
                 .map(word -> LessonVocabularyItem.createNew(
                         lesson.id(),
-                        lesson.ownerId(),
                         word.hanzi(),
                         word.pinyin(),
                         word.translation(),
@@ -45,18 +44,35 @@ public class LessonVocabularyTrackingService {
                 .toList());
 
         for (var word : uniqueWords.values()) {
-            var existing = learnerVocabularyProgressRepository.findByUserIdAndHanziAndPinyinAndTranslationLanguage(
-                    lesson.ownerId(), word.hanzi(), word.pinyin(), lesson.translationLanguage());
+            var existing = learnerVocabularyProgressRepository.findByHanziAndPinyinAndTranslationLanguage(
+                    word.hanzi(), word.pinyin(), lesson.translationLanguage());
             var progress = existing
                     .map(value -> value.refreshTranslation(word.translation(), lesson.createdAt()))
                     .orElseGet(() -> LearnerVocabularyProgress.createNew(
-                            lesson.ownerId(),
                             word.hanzi(),
                             word.pinyin(),
                             word.translation(),
                             lesson.translationLanguage(),
                             lesson.createdAt()));
             learnerVocabularyProgressRepository.save(progress);
+        }
+    }
+
+    public void recordReviewedVocabulary(Lesson lesson, List<LessonVocabularyWord> words) {
+        if (words == null || words.isEmpty()) {
+            return;
+        }
+
+        var uniqueWords = new LinkedHashMap<String, LessonVocabularyWord>();
+        for (var word : words) {
+            uniqueWords.putIfAbsent(key(word.hanzi(), word.pinyin(), lesson.translationLanguage().value()), word);
+        }
+
+        for (var word : uniqueWords.values()) {
+            var existing = learnerVocabularyProgressRepository.findByHanziAndPinyinAndTranslationLanguage(
+                    word.hanzi(), word.pinyin(), lesson.translationLanguage());
+            existing.ifPresent(progress -> learnerVocabularyProgressRepository.save(
+                    progress.markReviewed(word.translation(), lesson.createdAt())));
         }
     }
 

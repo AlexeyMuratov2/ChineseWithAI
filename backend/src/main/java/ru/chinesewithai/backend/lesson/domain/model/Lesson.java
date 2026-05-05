@@ -9,7 +9,6 @@ public final class Lesson {
     private static final int MAX_TITLE_LENGTH = 160;
 
     private final LessonId id;
-    private final UUID ownerId;
     private final String moduleKey;
     private final UUID sourceDraftId;
     private final UUID generatorSessionId;
@@ -24,7 +23,6 @@ public final class Lesson {
 
     private Lesson(
             LessonId id,
-            UUID ownerId,
             String moduleKey,
             UUID sourceDraftId,
             UUID generatorSessionId,
@@ -37,7 +35,6 @@ public final class Lesson {
             Instant updatedAt,
             long version) {
         this.id = Objects.requireNonNull(id, "id must not be null");
-        this.ownerId = Objects.requireNonNull(ownerId, "ownerId must not be null");
         this.moduleKey = normalizeOptionalText(moduleKey);
         this.sourceDraftId = sourceDraftId;
         this.generatorSessionId = generatorSessionId;
@@ -57,7 +54,6 @@ public final class Lesson {
     }
 
     public static Lesson createNew(
-            UUID ownerId,
             String moduleKey,
             UUID sourceDraftId,
             UUID generatorSessionId,
@@ -70,7 +66,6 @@ public final class Lesson {
         Objects.requireNonNull(now, "now must not be null");
         return new Lesson(
                 LessonId.newId(),
-                ownerId,
                 moduleKey,
                 sourceDraftId,
                 generatorSessionId,
@@ -86,7 +81,6 @@ public final class Lesson {
 
     public static Lesson reconstitute(
             LessonId id,
-            UUID ownerId,
             String moduleKey,
             UUID sourceDraftId,
             UUID generatorSessionId,
@@ -100,7 +94,6 @@ public final class Lesson {
             long version) {
         return new Lesson(
                 id,
-                ownerId,
                 moduleKey,
                 sourceDraftId,
                 generatorSessionId,
@@ -116,10 +109,6 @@ public final class Lesson {
 
     public LessonId id() {
         return id;
-    }
-
-    public UUID ownerId() {
-        return ownerId;
     }
 
     public String moduleKey() {

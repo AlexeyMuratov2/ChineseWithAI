@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import ru.chinesewithai.backend.lesson.application.port.out.LearnerVocabularyProgressRepository;
 import ru.chinesewithai.backend.lesson.domain.model.LanguageTag;
@@ -33,9 +32,9 @@ public class VocabularyReviewPlanSelector {
         this.learnerVocabularyProgressRepository = learnerVocabularyProgressRepository;
     }
 
-    public VocabularyReviewPlan select(UUID userId, LanguageTag translationLanguage, Instant referenceNow) {
+    public VocabularyReviewPlan select(LanguageTag translationLanguage, Instant referenceNow) {
         var rankedCandidates = learnerVocabularyProgressRepository
-                .findByUserIdAndTranslationLanguageAndStatusIn(userId, translationLanguage, REVIEWABLE_STATUSES)
+                .findByTranslationLanguageAndStatusIn(translationLanguage, REVIEWABLE_STATUSES)
                 .stream()
                 .filter(progress -> !wasReviewedTooRecently(progress, referenceNow))
                 .map(progress -> new RankedReviewCandidate(

@@ -19,9 +19,6 @@ public class LessonJpaEntity {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "owner_id", nullable = false, updatable = false)
-    private UUID ownerId;
-
     @Column(name = "module_key", length = 120)
     private String moduleKey;
 
@@ -61,7 +58,6 @@ public class LessonJpaEntity {
 
     public LessonJpaEntity(
             UUID id,
-            UUID ownerId,
             String moduleKey,
             UUID sourceDraftId,
             UUID generatorSessionId,
@@ -74,7 +70,6 @@ public class LessonJpaEntity {
             Instant updatedAt,
             long version) {
         this.id = id;
-        this.ownerId = ownerId;
         this.moduleKey = moduleKey;
         this.sourceDraftId = sourceDraftId;
         this.generatorSessionId = generatorSessionId;
@@ -90,10 +85,6 @@ public class LessonJpaEntity {
 
     public UUID getId() {
         return id;
-    }
-
-    public UUID getOwnerId() {
-        return ownerId;
     }
 
     public String getModuleKey() {

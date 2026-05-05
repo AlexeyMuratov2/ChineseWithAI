@@ -3,7 +3,6 @@ package ru.chinesewithai.backend.lesson.infrastructure.persistence;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.stereotype.Repository;
 import ru.chinesewithai.backend.lesson.application.port.out.LearnerVocabularyProgressRepository;
 import ru.chinesewithai.backend.lesson.domain.model.LanguageTag;
@@ -23,10 +22,10 @@ public class LearnerVocabularyProgressRepositoryJpaAdapter implements LearnerVoc
     }
 
     @Override
-    public Optional<LearnerVocabularyProgress> findByUserIdAndHanziAndPinyinAndTranslationLanguage(
-            UUID userId, String hanzi, String pinyin, LanguageTag translationLanguage) {
-        return repository.findByUserIdAndHanziAndPinyinAndTranslationLanguage(
-                        userId, hanzi, pinyin, translationLanguage.value())
+    public Optional<LearnerVocabularyProgress> findByHanziAndPinyinAndTranslationLanguage(
+            String hanzi, String pinyin, LanguageTag translationLanguage) {
+        return repository.findFirstByHanziAndPinyinAndTranslationLanguageOrderByUpdatedAtDescIdDesc(
+                        hanzi, pinyin, translationLanguage.value())
                 .map(mapper::toDomain);
     }
 
@@ -36,9 +35,9 @@ public class LearnerVocabularyProgressRepositoryJpaAdapter implements LearnerVoc
     }
 
     @Override
-    public List<LearnerVocabularyProgress> findByUserIdAndTranslationLanguageAndStatusIn(
-            UUID userId, LanguageTag translationLanguage, Set<LearnerVocabularyStatus> statuses) {
-        return repository.findByUserIdAndTranslationLanguageAndStatusIn(userId, translationLanguage.value(), statuses).stream()
+    public List<LearnerVocabularyProgress> findByTranslationLanguageAndStatusIn(
+            LanguageTag translationLanguage, Set<LearnerVocabularyStatus> statuses) {
+        return repository.findByTranslationLanguageAndStatusIn(translationLanguage.value(), statuses).stream()
                 .map(mapper::toDomain)
                 .toList();
     }

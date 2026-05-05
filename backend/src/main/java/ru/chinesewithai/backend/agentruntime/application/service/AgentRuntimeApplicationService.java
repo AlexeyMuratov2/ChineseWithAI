@@ -19,7 +19,6 @@ import ru.chinesewithai.backend.agentruntime.application.port.out.AgentProfileRe
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationWorkflowRegistry;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentSessionRepository;
 import ru.chinesewithai.backend.agentruntime.application.port.out.AgentStepRepository;
-import ru.chinesewithai.backend.agentruntime.application.port.out.CurrentAgentOwnerProvider;
 import ru.chinesewithai.backend.agentruntime.application.view.AgentModelView;
 import ru.chinesewithai.backend.agentruntime.application.view.AgentProfileSummaryView;
 import ru.chinesewithai.backend.agentruntime.application.view.AgentSessionView;
@@ -34,7 +33,6 @@ public class AgentRuntimeApplicationService
     private final AgentProfileRegistry agentProfileRegistry;
     private final AgentSessionRepository agentSessionRepository;
     private final AgentStepRepository agentStepRepository;
-    private final CurrentAgentOwnerProvider currentAgentOwnerProvider;
     private final PreGenerationWorkflowRegistry preGenerationWorkflowRegistry;
     private final AgentRuntimeOrchestrator orchestrator;
 
@@ -43,14 +41,12 @@ public class AgentRuntimeApplicationService
             AgentProfileRegistry agentProfileRegistry,
             AgentSessionRepository agentSessionRepository,
             AgentStepRepository agentStepRepository,
-            CurrentAgentOwnerProvider currentAgentOwnerProvider,
             PreGenerationWorkflowRegistry preGenerationWorkflowRegistry,
             AgentRuntimeOrchestrator orchestrator) {
         this.agentModelCatalog = agentModelCatalog;
         this.agentProfileRegistry = agentProfileRegistry;
         this.agentSessionRepository = agentSessionRepository;
         this.agentStepRepository = agentStepRepository;
-        this.currentAgentOwnerProvider = currentAgentOwnerProvider;
         this.preGenerationWorkflowRegistry = preGenerationWorkflowRegistry;
         this.orchestrator = orchestrator;
     }
@@ -64,9 +60,7 @@ public class AgentRuntimeApplicationService
                 .findByModelKey(command.modelKey())
                 .orElseThrow(() -> new AgentModelNotFoundException(command.modelKey()));
         validateWorkflowVariant(profile.profileKey(), command.workflowVariantKey());
-        var ownerId = currentAgentOwnerProvider.getCurrentOwnerId();
         var session = agentSessionRepository.save(AgentSession.createNew(
-                ownerId,
                 profile.profileKey(),
                 model.modelKey(),
                 command.task(),
@@ -80,9 +74,8 @@ public class AgentRuntimeApplicationService
     @Override
     @Transactional(readOnly = true)
     public AgentSessionView getSession(GetAgentSessionQuery query) {
-        var ownerId = currentAgentOwnerProvider.getCurrentOwnerId();
         var session = agentSessionRepository
-                .findByIdAndOwnerId(query.sessionId(), ownerId)
+                .findById(query.sessionId())
                 .orElseThrow(() -> new AgentSessionNotFoundException(query.sessionId()));
         return toView(session);
     }
@@ -111,7 +104,6 @@ public class AgentRuntimeApplicationService
 
         return new AgentSessionView(
                 session.id(),
-                session.ownerId(),
                 session.profileKey(),
                 session.modelKey(),
                 session.task(),

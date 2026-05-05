@@ -20,7 +20,6 @@ public class LessonPersistenceMapper {
     public LessonJpaEntity toEntity(Lesson lesson) {
         return new LessonJpaEntity(
                 lesson.id().value(),
-                lesson.ownerId(),
                 lesson.moduleKey(),
                 lesson.sourceDraftId(),
                 lesson.generatorSessionId(),
@@ -37,7 +36,6 @@ public class LessonPersistenceMapper {
     public Lesson toDomain(LessonJpaEntity entity) {
         return Lesson.reconstitute(
                 new LessonId(entity.getId()),
-                entity.getOwnerId(),
                 entity.getModuleKey(),
                 entity.getSourceDraftId(),
                 entity.getGeneratorSessionId(),
@@ -60,6 +58,7 @@ public class LessonPersistenceMapper {
                 entity.isActive(),
                 entity.getGeneratorProfileKey(),
                 entity.getGeneratorWorkflowVariantKey(),
+                entity.getGenerationPipelineKey(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
     }

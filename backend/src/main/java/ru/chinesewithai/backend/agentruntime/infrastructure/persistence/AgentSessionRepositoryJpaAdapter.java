@@ -21,7 +21,7 @@ public class AgentSessionRepositoryJpaAdapter implements AgentSessionRepository 
     }
 
     @Override
-    public Optional<AgentSession> findByIdAndOwnerId(UUID sessionId, UUID ownerId) {
-        return repository.findByIdAndOwnerId(sessionId, ownerId).map(AgentRuntimeJpaMapper::toDomain);
+    public Optional<AgentSession> findById(UUID sessionId) {
+        return repository.findById(sessionId).map(AgentRuntimeJpaMapper::toDomain);
     }
 }

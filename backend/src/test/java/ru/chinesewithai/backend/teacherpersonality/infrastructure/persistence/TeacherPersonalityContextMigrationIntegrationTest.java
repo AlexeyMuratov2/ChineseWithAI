@@ -73,12 +73,10 @@ class TeacherPersonalityContextMigrationIntegrationTest extends AbstractIntegrat
                             + "WHERE profile_key = 'lesson-generator:hsk5_v1' AND workflow_variant_key IS NULL")) {
                 assertThat(rs.next()).isTrue();
                 var stepsJson = rs.getString("steps_json");
-                assertThat(stepsJson).contains("current-user-profile");
+                assertThat(stepsJson).doesNotContain("current-user-profile");
                 assertThat(stepsJson).contains("learner-profile-context");
                 assertThat(stepsJson).contains("teacher-personality-context");
                 assertThat(stepsJson).contains("lesson-vocabulary-review-plan");
-                assertThat(stepsJson.indexOf("current-user-profile"))
-                        .isLessThan(stepsJson.indexOf("learner-profile-context"));
                 assertThat(stepsJson.indexOf("learner-profile-context"))
                         .isLessThan(stepsJson.indexOf("teacher-personality-context"));
                 assertThat(stepsJson.indexOf("teacher-personality-context"))

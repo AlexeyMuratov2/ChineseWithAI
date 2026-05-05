@@ -11,6 +11,7 @@ public record LessonModule(
         boolean active,
         String generatorProfileKey,
         String generatorWorkflowVariantKey,
+        String generationPipelineKey,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -20,6 +21,7 @@ public record LessonModule(
         systemPromptAppendix = requireText(systemPromptAppendix, "systemPromptAppendix");
         generatorProfileKey = requireText(generatorProfileKey, "generatorProfileKey");
         generatorWorkflowVariantKey = normalizeOptional(generatorWorkflowVariantKey);
+        generationPipelineKey = normalizeOptional(generationPipelineKey);
         if (schemaVersion <= 0) {
             throw new IllegalArgumentException("schemaVersion must be > 0");
         }

@@ -3,7 +3,6 @@ package ru.chinesewithai.backend.agentruntime.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -29,10 +28,8 @@ import ru.chinesewithai.backend.agentruntime.application.port.in.StartAgentSessi
 import ru.chinesewithai.backend.agentruntime.application.view.AgentModelView;
 import ru.chinesewithai.backend.agentruntime.application.view.AgentProfileSummaryView;
 import ru.chinesewithai.backend.agentruntime.application.view.AgentSessionView;
-import ru.chinesewithai.backend.config.OpenApiConfig;
 
 @RestController
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH_SCHEME)
 @RequestMapping("/api/v1/agent-runtime")
 public class AgentRuntimeController {
 
@@ -92,7 +89,6 @@ public class AgentRuntimeController {
                 .toList();
         return new AgentSessionResponse(
                 view.sessionId(),
-                view.ownerId(),
                 view.profileKey(),
                 view.modelKey(),
                 view.task(),

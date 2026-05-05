@@ -78,8 +78,6 @@ public class AgentRuntimeOrchestrator {
                         model.modelKey(),
                         "providerKey",
                         model.providerKey(),
-                        "ownerId",
-                        session.ownerId().toString(),
                         "status",
                         session.status().name()));
 

@@ -36,14 +36,23 @@ public class LearnerProfileContextPreGenerationStep implements PreGenerationStep
 
     @Override
     public PreGenerationStepResult execute(PreGenerationStepRequest request) {
+        var contextProfileKey = contextProfileKey(request);
         var context = repository
-                .findByProfileKeyAndActiveTrue(request.profile().profileKey())
+                .findByProfileKeyAndActiveTrue(contextProfileKey)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Missing active learner profile context for profile: " + request.profile().profileKey()));
+                        "Missing active learner profile context for profile: " + contextProfileKey));
         var artifact = context.getContentJson();
         var section = new PreGenerationContextSection(
                 PreGenerationContextSectionTarget.SYSTEM, SECTION_TITLE, prettyPrint(artifact));
         return new PreGenerationStepResult(List.of(section), Map.of(ARTIFACT_KEY, artifact));
+    }
+
+    private String contextProfileKey(PreGenerationStepRequest request) {
+        var configured = request.params().path("contextProfileKey").asText(null);
+        if (configured == null || configured.isBlank()) {
+            return request.profile().profileKey();
+        }
+        return configured.trim();
     }
 
     private String prettyPrint(JsonNode artifact) {

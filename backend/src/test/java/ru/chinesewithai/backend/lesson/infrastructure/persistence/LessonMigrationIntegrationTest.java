@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -45,7 +46,7 @@ class LessonMigrationIntegrationTest extends AbstractIntegrationTest {
 
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             try (ResultSet rs = statement.executeQuery(
-                    "SELECT module_key, schema_version, is_active, generator_profile_key, generator_workflow_variant_key FROM "
+                    "SELECT module_key, schema_version, is_active, generator_profile_key, generator_workflow_variant_key, generation_pipeline_key FROM "
                             + schema
                             + ".lesson_modules WHERE module_key = 'TestModule'")) {
                 assertThat(rs.next()).isTrue();
@@ -54,6 +55,7 @@ class LessonMigrationIntegrationTest extends AbstractIntegrationTest {
                 assertThat(rs.getBoolean("is_active")).isTrue();
                 assertThat(rs.getString("generator_profile_key")).isEqualTo("lesson-generator:v1");
                 assertThat(rs.getString("generator_workflow_variant_key")).isEqualTo("draft-generation-with-review:v1");
+                assertThat(rs.getString("generation_pipeline_key")).isNull();
             }
 
             try (ResultSet rs = statement.executeQuery(
@@ -63,17 +65,19 @@ class LessonMigrationIntegrationTest extends AbstractIntegrationTest {
             }
 
             try (ResultSet rs = statement.executeQuery(
-                    "SELECT module_key, generator_profile_key, generator_workflow_variant_key, system_prompt_appendix FROM "
+                    "SELECT module_key, generator_profile_key, generator_workflow_variant_key, generation_pipeline_key, system_prompt_appendix FROM "
                             + schema
                             + ".lesson_modules WHERE module_key = 'hsk5_v1'")) {
                 assertThat(rs.next()).isTrue();
-                assertThat(rs.getString("generator_profile_key")).isEqualTo("lesson-generator:hsk5_v1");
+                assertThat(rs.getString("generator_profile_key")).isEqualTo("lesson-generator:hsk5_v1_composer");
                 assertThat(rs.getString("generator_workflow_variant_key")).isNull();
+                assertThat(rs.getString("generation_pipeline_key")).isEqualTo("hsk5-quality:v1");
                 assertThat(rs.getString("system_prompt_appendix"))
                         .contains("sentences")
                         .contains("exampleSentences")
                         .contains("answerWord")
-                        .contains("expectedWord");
+                        .contains("expectedWord")
+                        .contains("grammar block");
             }
 
             try (ResultSet rs = statement.executeQuery(
@@ -88,6 +92,99 @@ class LessonMigrationIntegrationTest extends AbstractIntegrationTest {
                             + schema
                             + "' AND table_name = 'lessons' AND column_name = 'content_json'")) {
                 assertThat(rs.next()).isTrue();
+            }
+
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = '"
+                            + schema
+                            + "' AND table_name = 'lesson_generation_runs'")) {
+                assertThat(rs.next()).isTrue();
+            }
+        }
+    }
+
+    @Test
+    void v17AddsGenerationPipelineColumnWhenSchemaDrifted() throws Exception {
+        var schema = "lesson_v17_schema_test";
+        recreateSchema(schema);
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute(
+                    "CREATE TABLE " + schema + ".lesson_modules ("
+                            + "module_key VARCHAR(120) PRIMARY KEY,"
+                            + "display_name VARCHAR(160) NOT NULL,"
+                            + "system_prompt_appendix TEXT NOT NULL,"
+                            + "schema_version INT NOT NULL,"
+                            + "is_active BOOLEAN NOT NULL,"
+                            + "generator_profile_key VARCHAR(120) NOT NULL,"
+                            + "generator_workflow_variant_key VARCHAR(120),"
+                            + "created_at TIMESTAMPTZ NOT NULL,"
+                            + "updated_at TIMESTAMPTZ NOT NULL)");
+        }
+
+        Flyway.configure()
+                .dataSource(dataSource)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .baselineVersion("16")
+                .load()
+                .migrate();
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = '"
+                            + schema
+                            + "' AND table_name = 'lesson_modules' AND column_name = 'generation_pipeline_key'")) {
+                assertThat(rs.next()).isTrue();
+            }
+        }
+    }
+
+    @Test
+    void v18AndV19RepairDriftWhenLessonGenerationRunsMissingAtVersion17() throws Exception {
+        var schema = "lesson_v18_drift_schema_test";
+        recreateSchema(schema);
+
+        Flyway.configure()
+                .dataSource(dataSource)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .locations("classpath:db/migration")
+                .target(MigrationVersion.fromVersion("17"))
+                .load()
+                .migrate();
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE IF EXISTS " + schema + ".lesson_generation_run_stages CASCADE");
+            statement.execute("DROP TABLE IF EXISTS " + schema + ".lesson_generation_runs CASCADE");
+        }
+
+        Flyway.configure()
+                .dataSource(dataSource)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .locations("classpath:db/migration")
+                .load()
+                .migrate();
+
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = '"
+                            + schema
+                            + "' AND table_name IN ('lesson_generation_runs','lesson_generation_run_stages') ORDER BY table_name")) {
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString("table_name")).isEqualTo("lesson_generation_run_stages");
+                assertThat(rs.next()).isTrue();
+                assertThat(rs.getString("table_name")).isEqualTo("lesson_generation_runs");
+            }
+
+            try (ResultSet rs = statement.executeQuery(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = '"
+                            + schema
+                            + "' AND table_name = 'lesson_generation_runs' AND column_name = 'owner_id'")) {
+                assertThat(rs.next()).isFalse();
             }
         }
     }

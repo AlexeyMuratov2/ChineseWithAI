@@ -30,12 +30,33 @@ class Hsk5V1LessonStrategyTest {
             true,
             "lesson-generator:hsk5_v1",
             null,
+            null,
             Instant.now(),
             Instant.now());
 
     @Test
     void acceptsValidPayload() {
         assertThatCode(() -> strategy.validateLesson(validLesson(), module)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void acceptsGrammarBlock() {
+        var lesson = (ObjectNode) validLesson();
+        ((ArrayNode) lesson.get("sections")).insert(3, grammarSection());
+
+        assertThatCode(() -> strategy.validateLesson(lesson, module)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsInvalidGrammarBlock() {
+        var lesson = (ObjectNode) validLesson();
+        var grammar = (ObjectNode) grammarSection();
+        ((ObjectNode) ((ArrayNode) grammar.get("points")).get(0)).remove("exercises");
+        ((ArrayNode) lesson.get("sections")).insert(3, grammar);
+
+        assertThatThrownBy(() -> strategy.validateLesson(lesson, module))
+                .isInstanceOf(LessonContentValidationException.class)
+                .hasMessageContaining("sections[3].points[0].exercises must be an array");
     }
 
     @Test
@@ -163,6 +184,23 @@ class Hsk5V1LessonStrategyTest {
                         Map.of("sentence", "Example two without semantic checks", "translation", "Example two.")));
     }
 
+    private JsonNode grammarSection() {
+        return objectMapper.valueToTree(Map.of(
+                "type", "grammar",
+                "title", "Grammar",
+                "points", List.of(Map.of(
+                        "name", "Although",
+                        "pattern", "虽然..., 但是...",
+                        "explanation", "Use this pattern to contrast two ideas.",
+                        "examples", List.of(Map.of(
+                                "sentence", "虽然很难，但是我想试试。",
+                                "translation", "Although it is hard, I want to try.")),
+                        "exercises", List.of(Map.of(
+                                "prompt", "Use 虽然...,但是... to make one sentence.",
+                                "answerHint", "Start with 虽然.",
+                                "sampleAnswer", "虽然很忙，但是我会学习。"))))));
+    }
+
     private void removeFirstSectionOfType(ObjectNode lesson, String type) {
         var sections = (ArrayNode) lesson.get("sections");
         for (int i = 0; i < sections.size(); i++) {
@@ -175,7 +213,6 @@ class Hsk5V1LessonStrategyTest {
 
     private LessonDraftView draft(List<LessonDraftSourceView> sources) {
         return new LessonDraftView(
-                UUID.randomUUID(),
                 UUID.randomUUID(),
                 "Draft",
                 null,

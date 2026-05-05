@@ -2,7 +2,6 @@ package ru.chinesewithai.backend.storedfile.application.api;
 
 import java.io.InputStream;
 import java.util.Optional;
-import java.util.UUID;
 import ru.chinesewithai.backend.storedfile.application.command.CreateUploadSessionCommand;
 import ru.chinesewithai.backend.storedfile.application.command.DeleteStoredFileCommand;
 import ru.chinesewithai.backend.storedfile.application.command.StoreFileCommand;
@@ -12,7 +11,7 @@ import ru.chinesewithai.backend.storedfile.domain.model.StoredFileId;
 
 /**
  * Stable entry point for other Spring Modulith modules. Inject this interface (not web controllers
- * or S3 adapters) from {@code lessondraft}, {@code user}, etc.
+ * or S3 adapters) from feature modules.
  */
 public interface StoredFileFacade {
 
@@ -32,7 +31,6 @@ public interface StoredFileFacade {
             long contentLength,
             Optional<String> contentType,
             Optional<String> originalFileName,
-            Optional<UUID> principalId,
             InputStream body);
 
     StoredFileId store(StoreFileCommand command, InputStream content, ProgressSink progressSink);

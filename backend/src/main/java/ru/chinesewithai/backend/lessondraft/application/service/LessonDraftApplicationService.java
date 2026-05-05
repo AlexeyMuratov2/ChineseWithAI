@@ -26,7 +26,6 @@ import ru.chinesewithai.backend.lessondraft.application.port.in.ListMyLessonDraf
 import ru.chinesewithai.backend.lessondraft.application.port.in.RemoveLessonDraftSourceUseCase;
 import ru.chinesewithai.backend.lessondraft.application.port.in.ReorderLessonDraftSourcesUseCase;
 import ru.chinesewithai.backend.lessondraft.application.port.in.UpdateLessonDraftUseCase;
-import ru.chinesewithai.backend.lessondraft.application.port.out.CurrentUserIdProvider;
 import ru.chinesewithai.backend.lessondraft.application.port.out.LessonDraftRepository;
 import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftPageView;
 import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftSourceView;
@@ -50,23 +49,18 @@ public class LessonDraftApplicationService
                 DeleteLessonDraftUseCase {
 
     private final LessonDraftRepository lessonDraftRepository;
-    private final CurrentUserIdProvider currentUserIdProvider;
 
-    public LessonDraftApplicationService(
-            LessonDraftRepository lessonDraftRepository, CurrentUserIdProvider currentUserIdProvider) {
+    public LessonDraftApplicationService(LessonDraftRepository lessonDraftRepository) {
         this.lessonDraftRepository = lessonDraftRepository;
-        this.currentUserIdProvider = currentUserIdProvider;
     }
 
     @Override
     @Transactional
     public LessonDraftView createDraft(CreateLessonDraftCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
         var now = Instant.now();
 
         var draft = LessonDraft.createNew(
-                ownerId,
                 command.title(),
                 command.description(),
                 command.userInstructions(),
@@ -81,8 +75,7 @@ public class LessonDraftApplicationService
     @Transactional
     public LessonDraftView updateDraft(UpdateLessonDraftCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var draft = requireOwnedDraft(command.draftId(), ownerId);
+        var draft = requireDraft(command.draftId());
         var now = Instant.now();
 
         var updated = draft.updateMetadata(
@@ -100,16 +93,14 @@ public class LessonDraftApplicationService
     @Transactional(readOnly = true)
     public LessonDraftView getDraft(GetLessonDraftQuery query) {
         Objects.requireNonNull(query, "query must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        return toView(requireOwnedDraft(query.draftId(), ownerId));
+        return toView(requireDraft(query.draftId()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public LessonDraftPageView listMyDrafts(ListMyLessonDraftsQuery query) {
         Objects.requireNonNull(query, "query must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var page = lessonDraftRepository.findPageByOwnerId(ownerId, query.page(), query.size());
+        var page = lessonDraftRepository.findPage(query.page(), query.size());
 
         var items = page.items().stream()
                 .map(item -> new LessonDraftSummaryView(
@@ -131,8 +122,7 @@ public class LessonDraftApplicationService
     @Transactional
     public LessonDraftView addSource(AddLessonDraftSourceCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var draft = requireOwnedDraft(command.draftId(), ownerId);
+        var draft = requireDraft(command.draftId());
         var now = Instant.now();
 
         var updated = switch (command.type()) {
@@ -153,8 +143,7 @@ public class LessonDraftApplicationService
     @Transactional
     public LessonDraftView removeSource(RemoveLessonDraftSourceCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var draft = requireOwnedDraft(command.draftId(), ownerId);
+        var draft = requireDraft(command.draftId());
         var sourceId = new LessonDraftSourceId(command.sourceId());
         if (!draft.containsSource(sourceId)) {
             throw new SourceNotFoundException(command.sourceId());
@@ -168,8 +157,7 @@ public class LessonDraftApplicationService
     @Transactional
     public LessonDraftView reorderSources(ReorderLessonDraftSourcesCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var draft = requireOwnedDraft(command.draftId(), ownerId);
+        var draft = requireDraft(command.draftId());
         var orderedIds = command.orderedSourceIds().stream().map(LessonDraftSourceId::new).toList();
 
         try {
@@ -184,14 +172,13 @@ public class LessonDraftApplicationService
     @Transactional
     public void deleteDraft(DeleteLessonDraftCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var ownerId = currentUserIdProvider.getCurrentUserId();
-        var draft = requireOwnedDraft(command.draftId(), ownerId);
+        var draft = requireDraft(command.draftId());
         lessonDraftRepository.delete(draft);
     }
 
-    private LessonDraft requireOwnedDraft(UUID draftId, UUID ownerId) {
+    private LessonDraft requireDraft(UUID draftId) {
         return lessonDraftRepository
-                .findByIdAndOwnerId(new LessonDraftId(draftId), ownerId)
+                .findById(new LessonDraftId(draftId))
                 .orElseThrow(() -> new LessonDraftNotFoundException(draftId));
     }
 
@@ -235,7 +222,6 @@ public class LessonDraftApplicationService
 
         return new LessonDraftView(
                 draft.id().value(),
-                draft.ownerId(),
                 draft.title(),
                 draft.description(),
                 draft.userInstructions(),

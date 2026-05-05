@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationContextSectionTarget;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationState;
@@ -37,7 +36,6 @@ class LessonVocabularyReviewPlanPreGenerationStepTest {
     void readsDraftTranslationLanguageAndEmitsArtifactAndSystemSection() {
         var selector = mock(VocabularyReviewPlanSelector.class);
         var objectMapper = new ObjectMapper();
-        var ownerId = UUID.fromString("00000000-0000-0000-0000-000000000123");
         var plan = new VocabularyReviewPlan(
                 List.of(new VocabularyReviewPlanItem(
                         "认识",
@@ -49,13 +47,12 @@ class LessonVocabularyReviewPlanPreGenerationStepTest {
                         SuggestedReviewMode.RECOGNITION)),
                 List.of(),
                 VocabularyReviewPolicy.DEFAULT);
-        when(selector.select(eq(ownerId), eq(LanguageTag.of("en")), any(Instant.class))).thenReturn(plan);
+        when(selector.select(eq(LanguageTag.of("en")), any(Instant.class))).thenReturn(plan);
 
         var step = new LessonVocabularyReviewPlanPreGenerationStep(selector, objectMapper);
         var result = step.execute(new PreGenerationStepRequest(
                 profile(),
                 AgentSession.createNew(
-                        ownerId,
                         "lesson-generator:v1",
                         "fake-model",
                         "Generate lesson",
@@ -64,7 +61,7 @@ class LessonVocabularyReviewPlanPreGenerationStepTest {
                 JsonNodeFactory.instance.objectNode(),
                 PreGenerationState.empty()));
 
-        verify(selector).select(eq(ownerId), eq(LanguageTag.of("en")), any(Instant.class));
+        verify(selector).select(eq(LanguageTag.of("en")), any(Instant.class));
         assertThat(result.artifacts()).containsKey("vocabularyReviewPlan");
         assertThat(result.contextSections()).singleElement().satisfies(section -> {
             assertThat(section.target()).isEqualTo(PreGenerationContextSectionTarget.SYSTEM);

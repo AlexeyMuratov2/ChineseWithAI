@@ -309,7 +309,6 @@ class DeepSeekModelGatewayTest {
                 false,
                 true);
         var session = AgentSession.createNew(
-                java.util.UUID.randomUUID(),
                 profile.profileKey(),
                 "deepseek-chat",
                 "Say hello",

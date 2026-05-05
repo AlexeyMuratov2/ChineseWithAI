@@ -38,8 +38,7 @@ public class LessonVocabularyReviewPlanPreGenerationStep implements PreGeneratio
     @Override
     public PreGenerationStepResult execute(PreGenerationStepRequest request) {
         var translationLanguage = readTranslationLanguage(request.session().inputJson());
-        var plan = vocabularyReviewPlanSelector.select(
-                request.session().ownerId(), translationLanguage, Instant.now());
+        var plan = vocabularyReviewPlanSelector.select(translationLanguage, Instant.now());
         var artifact = objectMapper.valueToTree(plan);
         var section = new PreGenerationContextSection(
                 PreGenerationContextSectionTarget.SYSTEM, SECTION_TITLE, prettyPrint(artifact));

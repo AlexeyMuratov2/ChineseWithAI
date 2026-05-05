@@ -19,7 +19,6 @@ public final class LessonDraft {
     private static final int MAX_USER_INSTRUCTIONS_LENGTH = 4_000;
 
     private final LessonDraftId id;
-    private final UUID ownerId;
     private final String title;
     private final String description;
     private final String userInstructions;
@@ -32,7 +31,6 @@ public final class LessonDraft {
 
     private LessonDraft(
             LessonDraftId id,
-            UUID ownerId,
             String title,
             String description,
             String userInstructions,
@@ -43,7 +41,6 @@ public final class LessonDraft {
             Instant updatedAt,
             long version) {
         this.id = Objects.requireNonNull(id, "id must not be null");
-        this.ownerId = Objects.requireNonNull(ownerId, "ownerId must not be null");
         this.title = normalizeRequiredText(title, "title", MAX_TITLE_LENGTH);
         this.description = normalizeOptionalText(description, "description", MAX_DESCRIPTION_LENGTH);
         this.userInstructions = normalizeOptionalText(userInstructions, "userInstructions", MAX_USER_INSTRUCTIONS_LENGTH);
@@ -56,7 +53,6 @@ public final class LessonDraft {
     }
 
     public static LessonDraft createNew(
-            UUID ownerId,
             String title,
             String description,
             String userInstructions,
@@ -66,7 +62,6 @@ public final class LessonDraft {
         Objects.requireNonNull(now, "now must not be null");
         return new LessonDraft(
                 LessonDraftId.newId(),
-                ownerId,
                 title,
                 description,
                 userInstructions,
@@ -80,7 +75,6 @@ public final class LessonDraft {
 
     public static LessonDraft reconstitute(
             LessonDraftId id,
-            UUID ownerId,
             String title,
             String description,
             String userInstructions,
@@ -92,7 +86,6 @@ public final class LessonDraft {
             long version) {
         return new LessonDraft(
                 id,
-                ownerId,
                 title,
                 description,
                 userInstructions,
@@ -114,7 +107,6 @@ public final class LessonDraft {
         Objects.requireNonNull(now, "now must not be null");
         return new LessonDraft(
                 id,
-                ownerId,
                 title,
                 description,
                 userInstructions,
@@ -195,10 +187,6 @@ public final class LessonDraft {
         return id;
     }
 
-    public UUID ownerId() {
-        return ownerId;
-    }
-
     public String title() {
         return title;
     }
@@ -238,7 +226,6 @@ public final class LessonDraft {
     private LessonDraft withSources(List<LessonDraftSource> updatedSources, Instant now) {
         return new LessonDraft(
                 id,
-                ownerId,
                 title,
                 description,
                 userInstructions,

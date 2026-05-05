@@ -11,7 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 interface SpringDataLessonDraftJpaRepository extends JpaRepository<LessonDraftJpaEntity, UUID> {
 
     @EntityGraph(attributePaths = "sources")
-    Optional<LessonDraftJpaEntity> findByIdAndOwnerId(UUID id, UUID ownerId);
+    @Query("select d from LessonDraftJpaEntity d where d.id = :id")
+    Optional<LessonDraftJpaEntity> findWithSourcesById(UUID id);
 
     @Query(
             """
@@ -27,9 +28,8 @@ interface SpringDataLessonDraftJpaRepository extends JpaRepository<LessonDraftJp
             )
             from LessonDraftJpaEntity d
             left join d.sources s
-            where d.ownerId = :ownerId
             group by d.id, d.title, d.explanationLanguage, d.translationLanguage, d.createdAt, d.updatedAt, d.version
             order by d.updatedAt desc
             """)
-    Page<LessonDraftListItemJpaProjection> findPageByOwnerId(UUID ownerId, Pageable pageable);
+    Page<LessonDraftListItemJpaProjection> findPage(Pageable pageable);
 }

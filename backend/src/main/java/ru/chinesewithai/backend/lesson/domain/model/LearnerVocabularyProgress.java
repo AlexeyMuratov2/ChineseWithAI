@@ -2,12 +2,10 @@ package ru.chinesewithai.backend.lesson.domain.model;
 
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 
 public final class LearnerVocabularyProgress {
 
     private final Long id;
-    private final UUID userId;
     private final String hanzi;
     private final String pinyin;
     private final String translation;
@@ -22,7 +20,6 @@ public final class LearnerVocabularyProgress {
 
     private LearnerVocabularyProgress(
             Long id,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -44,7 +41,6 @@ public final class LearnerVocabularyProgress {
             throw new IllegalArgumentException("reviewCount must be >= 0");
         }
         this.id = id;
-        this.userId = Objects.requireNonNull(userId, "userId must not be null");
         this.hanzi = requireText(hanzi, "hanzi");
         this.pinyin = requireText(pinyin, "pinyin");
         this.translation = requireText(translation, "translation");
@@ -59,7 +55,6 @@ public final class LearnerVocabularyProgress {
     }
 
     public static LearnerVocabularyProgress createNew(
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -68,7 +63,6 @@ public final class LearnerVocabularyProgress {
         Objects.requireNonNull(now, "now must not be null");
         return new LearnerVocabularyProgress(
                 null,
-                userId,
                 hanzi,
                 pinyin,
                 translation,
@@ -84,7 +78,6 @@ public final class LearnerVocabularyProgress {
 
     public static LearnerVocabularyProgress reconstitute(
             Long id,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -98,7 +91,6 @@ public final class LearnerVocabularyProgress {
             Instant updatedAt) {
         return new LearnerVocabularyProgress(
                 id,
-                userId,
                 hanzi,
                 pinyin,
                 translation,
@@ -116,7 +108,6 @@ public final class LearnerVocabularyProgress {
         Objects.requireNonNull(updatedAt, "updatedAt must not be null");
         return new LearnerVocabularyProgress(
                 id,
-                userId,
                 hanzi,
                 pinyin,
                 translation,
@@ -130,12 +121,25 @@ public final class LearnerVocabularyProgress {
                 updatedAt);
     }
 
-    public Long id() {
-        return id;
+    public LearnerVocabularyProgress markReviewed(String translation, Instant reviewedAt) {
+        Objects.requireNonNull(reviewedAt, "reviewedAt must not be null");
+        return new LearnerVocabularyProgress(
+                id,
+                hanzi,
+                pinyin,
+                translation,
+                translationLanguage,
+                status,
+                masteryScore,
+                firstSeenAt,
+                reviewedAt,
+                reviewCount + 1,
+                createdAt,
+                reviewedAt);
     }
 
-    public UUID userId() {
-        return userId;
+    public Long id() {
+        return id;
     }
 
     public String hanzi() {

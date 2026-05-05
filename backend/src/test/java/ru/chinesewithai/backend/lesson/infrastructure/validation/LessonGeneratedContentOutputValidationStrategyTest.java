@@ -15,6 +15,7 @@ import ru.chinesewithai.backend.agentruntime.domain.model.MemoryPolicy;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputContract;
 import ru.chinesewithai.backend.agentruntime.domain.model.OutputFieldType;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonModuleRepository;
+import ru.chinesewithai.backend.lesson.application.validation.Hsk5GeneratedLessonQualityValidator;
 import ru.chinesewithai.backend.lesson.application.validation.LessonContentValidator;
 import ru.chinesewithai.backend.lesson.application.validation.LessonModuleStrategyCatalog;
 import ru.chinesewithai.backend.lesson.application.validation.TestModuleLessonStrategy;
@@ -31,6 +32,7 @@ class LessonGeneratedContentOutputValidationStrategyTest {
             true,
             "lesson-generator:v1",
             "draft-generation-with-review:v1",
+            null,
             Instant.now(),
             Instant.now());
 
@@ -50,6 +52,7 @@ class LessonGeneratedContentOutputValidationStrategyTest {
                         return List.of();
                     }
                 },
+                new Hsk5GeneratedLessonQualityValidator(),
                 objectMapper);
         var rawOutput = """
                 {

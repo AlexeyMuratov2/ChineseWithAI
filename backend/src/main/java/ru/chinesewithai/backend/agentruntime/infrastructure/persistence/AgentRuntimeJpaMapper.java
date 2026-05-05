@@ -12,7 +12,6 @@ final class AgentRuntimeJpaMapper {
     static AgentSessionJpaEntity toEntity(AgentSession session) {
         return new AgentSessionJpaEntity(
                 session.id(),
-                session.ownerId(),
                 session.profileKey(),
                 session.modelKey(),
                 session.task(),
@@ -31,7 +30,6 @@ final class AgentRuntimeJpaMapper {
     static AgentSession toDomain(AgentSessionJpaEntity entity) {
         return AgentSession.reconstitute(
                 entity.getId(),
-                entity.getOwnerId(),
                 entity.getProfileKey(),
                 entity.getModelKey(),
                 entity.getTask(),

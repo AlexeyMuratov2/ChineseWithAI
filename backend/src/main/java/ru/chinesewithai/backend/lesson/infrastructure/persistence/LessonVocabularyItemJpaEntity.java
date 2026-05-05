@@ -21,9 +21,6 @@ public class LessonVocabularyItemJpaEntity {
     @Column(name = "lesson_id", nullable = false, updatable = false)
     private UUID lessonId;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
-    private UUID userId;
-
     @Column(name = "hanzi", nullable = false, length = 255)
     private String hanzi;
 
@@ -44,7 +41,6 @@ public class LessonVocabularyItemJpaEntity {
     public LessonVocabularyItemJpaEntity(
             Long id,
             UUID lessonId,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -52,7 +48,6 @@ public class LessonVocabularyItemJpaEntity {
             Instant createdAt) {
         this.id = id;
         this.lessonId = lessonId;
-        this.userId = userId;
         this.hanzi = hanzi;
         this.pinyin = pinyin;
         this.translation = translation;
@@ -66,10 +61,6 @@ public class LessonVocabularyItemJpaEntity {
 
     public UUID getLessonId() {
         return lessonId;
-    }
-
-    public UUID getUserId() {
-        return userId;
     }
 
     public String getHanzi() {

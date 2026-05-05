@@ -1,9 +1,6 @@
 package ru.chinesewithai.backend.agentruntime.infrastructure.persistence;
 
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface SpringDataAgentSessionJpaRepository extends JpaRepository<AgentSessionJpaEntity, UUID> {
-    Optional<AgentSessionJpaEntity> findByIdAndOwnerId(UUID id, UUID ownerId);
-}
+interface SpringDataAgentSessionJpaRepository extends JpaRepository<AgentSessionJpaEntity, UUID> {}

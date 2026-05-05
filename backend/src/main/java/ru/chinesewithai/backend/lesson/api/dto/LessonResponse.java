@@ -6,7 +6,6 @@ import java.util.UUID;
 
 public record LessonResponse(
         UUID id,
-        UUID ownerId,
         String moduleKey,
         UUID sourceDraftId,
         UUID generatorSessionId,

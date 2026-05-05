@@ -3,12 +3,13 @@ package ru.chinesewithai.backend.lesson.application.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.chinesewithai.backend.agentruntime.application.command.StartAgentSessionCommand;
 import ru.chinesewithai.backend.agentruntime.application.port.in.StartAgentSessionUseCase;
+import ru.chinesewithai.backend.lesson.application.generation.LessonGenerationInputFactory;
+import ru.chinesewithai.backend.lesson.application.generation.LessonGenerationPipelineCatalog;
+import ru.chinesewithai.backend.lesson.application.generation.LessonGenerationPipelineRequest;
 import ru.chinesewithai.backend.lesson.application.command.CreateLessonFromJsonCommand;
 import ru.chinesewithai.backend.lesson.application.command.GenerateLessonFromDraftCommand;
 import ru.chinesewithai.backend.lesson.application.command.GetLessonQuery;
@@ -20,7 +21,8 @@ import ru.chinesewithai.backend.lesson.application.exception.LessonNotFoundExcep
 import ru.chinesewithai.backend.lesson.application.port.in.CreateLessonFromJsonUseCase;
 import ru.chinesewithai.backend.lesson.application.port.in.GenerateLessonFromDraftUseCase;
 import ru.chinesewithai.backend.lesson.application.port.in.GetLessonUseCase;
-import ru.chinesewithai.backend.lesson.application.port.out.CurrentLessonOwnerProvider;
+import ru.chinesewithai.backend.lesson.application.port.in.ListLessonsByModuleUseCase;
+import ru.chinesewithai.backend.lesson.application.port.out.LessonGenerationTraceRepository;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonModuleRepository;
 import ru.chinesewithai.backend.lesson.application.port.out.LessonRepository;
 import ru.chinesewithai.backend.lesson.application.validation.LessonContentValidator;
@@ -35,47 +37,56 @@ import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 import ru.chinesewithai.backend.lesson.infrastructure.config.LessonGenerationProperties;
 import ru.chinesewithai.backend.lessondraft.application.command.GetLessonDraftQuery;
 import ru.chinesewithai.backend.lessondraft.application.port.in.GetLessonDraftUseCase;
-import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftView;
 
 @Service
 public class LessonApplicationService
-        implements CreateLessonFromJsonUseCase, GenerateLessonFromDraftUseCase, GetLessonUseCase {
+        implements CreateLessonFromJsonUseCase, GenerateLessonFromDraftUseCase, GetLessonUseCase,
+                ListLessonsByModuleUseCase {
 
     private static final String GENERATE_TASK = "Generate a lesson JSON from the provided lesson draft.";
 
     private final LessonRepository lessonRepository;
     private final LessonModuleRepository lessonModuleRepository;
-    private final CurrentLessonOwnerProvider currentLessonOwnerProvider;
     private final LessonContentValidator lessonContentValidator;
     private final LessonModuleStrategyCatalog strategyCatalog;
     private final LessonGenerationPromptFactory promptFactory;
     private final LessonGenerationProperties generationProperties;
     private final GetLessonDraftUseCase getLessonDraftUseCase;
     private final StartAgentSessionUseCase startAgentSessionUseCase;
+    private final LessonGenerationPipelineCatalog pipelineCatalog;
+    private final LessonGenerationInputFactory generationInputFactory;
+    private final GeneratedLessonPersister generatedLessonPersister;
+    private final LessonGenerationTraceRepository generationTraceRepository;
     private final LessonVocabularyTrackingService lessonVocabularyTrackingService;
     private final ObjectMapper objectMapper;
 
     public LessonApplicationService(
             LessonRepository lessonRepository,
             LessonModuleRepository lessonModuleRepository,
-            CurrentLessonOwnerProvider currentLessonOwnerProvider,
             LessonContentValidator lessonContentValidator,
             LessonModuleStrategyCatalog strategyCatalog,
             LessonGenerationPromptFactory promptFactory,
             LessonGenerationProperties generationProperties,
             GetLessonDraftUseCase getLessonDraftUseCase,
             StartAgentSessionUseCase startAgentSessionUseCase,
+            LessonGenerationPipelineCatalog pipelineCatalog,
+            LessonGenerationInputFactory generationInputFactory,
+            GeneratedLessonPersister generatedLessonPersister,
+            LessonGenerationTraceRepository generationTraceRepository,
             LessonVocabularyTrackingService lessonVocabularyTrackingService,
             ObjectMapper objectMapper) {
         this.lessonRepository = lessonRepository;
         this.lessonModuleRepository = lessonModuleRepository;
-        this.currentLessonOwnerProvider = currentLessonOwnerProvider;
         this.lessonContentValidator = lessonContentValidator;
         this.strategyCatalog = strategyCatalog;
         this.promptFactory = promptFactory;
         this.generationProperties = generationProperties;
         this.getLessonDraftUseCase = getLessonDraftUseCase;
         this.startAgentSessionUseCase = startAgentSessionUseCase;
+        this.pipelineCatalog = pipelineCatalog;
+        this.generationInputFactory = generationInputFactory;
+        this.generatedLessonPersister = generatedLessonPersister;
+        this.generationTraceRepository = generationTraceRepository;
         this.lessonVocabularyTrackingService = lessonVocabularyTrackingService;
         this.objectMapper = objectMapper;
     }
@@ -83,7 +94,6 @@ public class LessonApplicationService
     @Override
     @Transactional
     public LessonView createFromJson(CreateLessonFromJsonCommand command) {
-        var ownerId = currentLessonOwnerProvider.getCurrentOwnerId();
         if (command.sourceDraftId() != null) {
             getLessonDraftUseCase.getDraft(new GetLessonDraftQuery(command.sourceDraftId()));
         }
@@ -99,7 +109,6 @@ public class LessonApplicationService
         var payload = lessonContentValidator.validate(command.contentJson(), module);
 
         var lesson = lessonRepository.save(Lesson.createNew(
-                ownerId,
                 module == null ? null : module.moduleKey(),
                 command.sourceDraftId(),
                 null,
@@ -110,22 +119,45 @@ public class LessonApplicationService
                 payload.contentJson(),
                 Instant.now()));
         lessonVocabularyTrackingService.recordLessonVocabulary(lesson, payload.newWords());
+        lessonVocabularyTrackingService.recordReviewedVocabulary(lesson, payload.reviewWords());
         return toView(lesson);
     }
 
     @Override
-    @Transactional
     public LessonView generateFromDraft(GenerateLessonFromDraftCommand command) {
-        var ownerId = currentLessonOwnerProvider.getCurrentOwnerId();
         var module = requireActiveModule(command.moduleKey());
         var draft = getLessonDraftUseCase.getDraft(new GetLessonDraftQuery(command.draftId()));
         strategyCatalog.getRequired(module.moduleKey()).validateDraftForGeneration(draft);
+        var modelKey = resolveModelKey(command.modelKey());
+
+        if (module.generationPipelineKey() != null) {
+            var pipelineResult = pipelineCatalog
+                    .getRequired(module.generationPipelineKey())
+                    .generate(new LessonGenerationPipelineRequest(module, draft, modelKey));
+            final ValidatedLessonPayload payload;
+            try {
+                payload = lessonContentValidator.validate(pipelineResult.finalOutputJson(), module);
+            } catch (LessonContentValidationException ex) {
+                generationTraceRepository.markRunFailed(pipelineResult.generationRunId(), ex.getMessage(), Instant.now());
+                throw new LessonGenerationFailedException(pipelineResult.finalGeneratorSessionId(), ex.getMessage());
+            }
+            try {
+                var lesson = generatedLessonPersister.persistGeneratedLesson(
+                        module, draft.id(), pipelineResult.finalGeneratorSessionId(), payload, Instant.now());
+                generationTraceRepository.markRunCompleted(
+                        pipelineResult.generationRunId(), lesson.id(), pipelineResult.finalGeneratorSessionId(), Instant.now());
+                return lesson;
+            } catch (RuntimeException ex) {
+                generationTraceRepository.markRunFailed(pipelineResult.generationRunId(), failureMessage(ex), Instant.now());
+                throw ex;
+            }
+        }
 
         var session = startAgentSessionUseCase.startSession(new StartAgentSessionCommand(
                 module.generatorProfileKey(),
-                resolveModelKey(command.modelKey()),
+                modelKey,
                 GENERATE_TASK,
-                writeJson(buildGenerationInput(draft, module)),
+                writeJson(generationInputFactory.build(draft, module)),
                 promptFactory.buildSystemPromptAppendix(module),
                 module.generatorWorkflowVariantKey()));
 
@@ -140,29 +172,25 @@ public class LessonApplicationService
             throw new LessonGenerationFailedException(session.sessionId(), ex.getMessage());
         }
 
-        var lesson = lessonRepository.save(Lesson.createNew(
-                ownerId,
-                module.moduleKey(),
-                draft.id(),
-                session.sessionId(),
-                payload.title(),
-                LanguageTag.of(payload.studyLanguage()),
-                LanguageTag.of(payload.explanationLanguage()),
-                LanguageTag.of(payload.translationLanguage()),
-                payload.contentJson(),
-                Instant.now()));
-        lessonVocabularyTrackingService.recordLessonVocabulary(lesson, payload.newWords());
-        return toView(lesson);
+        return generatedLessonPersister.persistGeneratedLesson(module, draft.id(), session.sessionId(), payload, Instant.now());
     }
 
     @Override
     @Transactional(readOnly = true)
     public LessonView getLesson(GetLessonQuery query) {
-        var ownerId = currentLessonOwnerProvider.getCurrentOwnerId();
         var lesson = lessonRepository
-                .findByIdAndOwnerId(new LessonId(query.lessonId()), ownerId)
+                .findById(new LessonId(query.lessonId()))
                 .orElseThrow(() -> new LessonNotFoundException(query.lessonId()));
         return toView(lesson);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<LessonView> listByModuleKey(String moduleKey) {
+        return lessonRepository.findAllByModuleKeyOrderByCreatedAtDesc(normalizeOptional(moduleKey))
+                .stream()
+                .map(LessonApplicationService::toView)
+                .toList();
     }
 
     private LessonModule requireActiveModule(String moduleKey) {
@@ -180,38 +208,6 @@ public class LessonApplicationService
         return normalized == null ? generationProperties.defaultModelKey() : normalized;
     }
 
-    private Object buildGenerationInput(LessonDraftView draft, LessonModule module) {
-        var orderedSources = draft.sources().stream()
-                .map(source -> {
-                    var payload = new LinkedHashMap<String, Object>();
-                    payload.put("id", source.id());
-                    payload.put("type", source.type());
-                    payload.put("position", source.position());
-                    payload.put("textContent", source.textContent());
-                    payload.put("documentFileId", source.documentFileId());
-                    payload.put("documentOriginalFileName", source.documentOriginalFileName());
-                    return payload;
-                })
-                .toList();
-
-        var draftPayload = new LinkedHashMap<String, Object>();
-        draftPayload.put("id", draft.id());
-        draftPayload.put("title", draft.title());
-        draftPayload.put("description", draft.description());
-        draftPayload.put("userInstructions", draft.userInstructions());
-        draftPayload.put("explanationLanguage", draft.explanationLanguage());
-        draftPayload.put("translationLanguage", draft.translationLanguage());
-        draftPayload.put("sources", orderedSources);
-
-        var input = new LinkedHashMap<String, Object>();
-        input.put("draftId", draft.id());
-        input.put("moduleKey", module.moduleKey());
-        input.put("moduleSchemaVersion", module.schemaVersion());
-        input.put("draft", draftPayload);
-        input.put("orderedSources", List.copyOf(orderedSources));
-        return input;
-    }
-
     private String writeJson(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -220,10 +216,16 @@ public class LessonApplicationService
         }
     }
 
+    private String failureMessage(RuntimeException ex) {
+        if (ex.getMessage() == null || ex.getMessage().isBlank()) {
+            return "Lesson generation failed";
+        }
+        return ex.getMessage();
+    }
+
     private static LessonView toView(Lesson lesson) {
         return new LessonView(
                 lesson.id().value(),
-                lesson.ownerId(),
                 lesson.moduleKey(),
                 lesson.sourceDraftId(),
                 lesson.generatorSessionId(),

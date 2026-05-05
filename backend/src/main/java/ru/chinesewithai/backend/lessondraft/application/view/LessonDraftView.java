@@ -6,7 +6,6 @@ import java.util.UUID;
 
 public record LessonDraftView(
         UUID id,
-        UUID ownerId,
         String title,
         String description,
         String userInstructions,

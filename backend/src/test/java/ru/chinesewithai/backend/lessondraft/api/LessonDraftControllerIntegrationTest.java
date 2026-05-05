@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -40,24 +39,23 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void clean() {
+        jdbcTemplate.update("DELETE FROM lesson_generation_run_stages");
+        jdbcTemplate.update("DELETE FROM lesson_generation_runs");
         jdbcTemplate.update("DELETE FROM lesson_draft_sources");
         jdbcTemplate.update("DELETE FROM lesson_drafts");
-        jdbcTemplate.update("DELETE FROM app_user");
     }
 
     @Test
-    void listRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/api/v1/lesson-drafts")).andExpect(status().isUnauthorized());
+    void listReturnsEmptyPageWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/lesson-drafts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
-    void fullFlowSupportsOwnerScopedCrudAndSources() throws Exception {
-        register("owner_user", "StrongPass123!", "Owner User");
-        var ownerToken = login("owner_user", "StrongPass123!");
-
+    void fullFlowSupportsCrudAndSources() throws Exception {
         var createPayload = objectMapper.writeValueAsString(new CreateDraftPayload("HSK 3 travel", "trip prep", "focus on dialogs", null, null));
         var createResponse = mockMvc.perform(post("/api/v1/lesson-drafts")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createPayload))
                 .andExpect(status().isCreated())
@@ -73,7 +71,6 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
         var addTextPayload = objectMapper.writeValueAsString(
                 new AddSourcePayload("TEXT_NOTE", "Need practical airport phrases", null, null));
         var afterText = mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(addTextPayload))
                 .andExpect(status().isOk())
@@ -88,7 +85,6 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
         var addDocPayload = objectMapper.writeValueAsString(
                 new AddSourcePayload("DOCUMENT_FILE", null, documentFileId, "airport-handbook.pdf"));
         var afterDoc = mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(addDocPayload))
                 .andExpect(status().isOk())
@@ -102,7 +98,6 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
 
         var reorderPayload = objectMapper.writeValueAsString(new ReorderSourcesPayload(List.of(docSourceId, textSourceId)));
         mockMvc.perform(put("/api/v1/lesson-drafts/{draftId}/sources/reorder", draftId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(ownerToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(reorderPayload))
                 .andExpect(status().isOk())
@@ -111,36 +106,27 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.sources[1].type").value("TEXT_NOTE"))
                 .andExpect(jsonPath("$.sources[1].position").value(1));
 
-        mockMvc.perform(get("/api/v1/lesson-drafts/{draftId}", draftId).header(HttpHeaders.AUTHORIZATION, bearer(ownerToken)))
+        mockMvc.perform(get("/api/v1/lesson-drafts/{draftId}", draftId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(draftId.toString()))
                 .andExpect(jsonPath("$.sources.length()").value(2));
 
-        mockMvc.perform(get("/api/v1/lesson-drafts").header(HttpHeaders.AUTHORIZATION, bearer(ownerToken)))
+        mockMvc.perform(get("/api/v1/lesson-drafts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.items[0].sourceCount").value(2));
 
-        register("other_user", "StrongPass123!", "Other User");
-        var otherToken = login("other_user", "StrongPass123!");
-        mockMvc.perform(get("/api/v1/lesson-drafts/{draftId}", draftId).header(HttpHeaders.AUTHORIZATION, bearer(otherToken)))
-                .andExpect(status().isNotFound());
-
-        mockMvc.perform(delete("/api/v1/lesson-drafts/{draftId}", draftId).header(HttpHeaders.AUTHORIZATION, bearer(ownerToken)))
+        mockMvc.perform(delete("/api/v1/lesson-drafts/{draftId}", draftId))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/lesson-drafts/{draftId}", draftId).header(HttpHeaders.AUTHORIZATION, bearer(ownerToken)))
+        mockMvc.perform(get("/api/v1/lesson-drafts/{draftId}", draftId))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void addSourceRejectsIncompatiblePayload() throws Exception {
-        register("payload_user", "StrongPass123!", "Payload User");
-        var token = login("payload_user", "StrongPass123!");
-
         var createPayload = objectMapper.writeValueAsString(new CreateDraftPayload("Payload test", null, null, null, null));
         var createResponse = mockMvc.perform(post("/api/v1/lesson-drafts")
-                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createPayload))
                 .andExpect(status().isCreated())
@@ -153,26 +139,9 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
                 new AddSourcePayload("TEXT_NOTE", "note", UUID.randomUUID(), "should-not-be-here.pdf"));
 
         mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
-                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidPayload))
                 .andExpect(status().isBadRequest());
-    }
-
-    private void register(String username, String password, String displayName) throws Exception {
-        var payload = objectMapper.writeValueAsString(new RegisterPayload(username, password, displayName));
-        mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isCreated());
-    }
-
-    private String login(String username, String password) throws Exception {
-        var payload = objectMapper.writeValueAsString(new LoginPayload(username, password));
-        var response = mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        return objectMapper.readTree(response).get("accessToken").asText();
     }
 
     private static UUID findSourceIdByType(JsonNode draftJson, String type) {
@@ -183,14 +152,6 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
         }
         throw new IllegalStateException("Source type not found in payload: " + type);
     }
-
-    private static String bearer(String token) {
-        return "Bearer " + token;
-    }
-
-    private record RegisterPayload(String username, String password, String displayName) {}
-
-    private record LoginPayload(String username, String password) {}
 
     private record CreateDraftPayload(
             String title, String description, String userInstructions, String explanationLanguage, String translationLanguage) {}

@@ -32,6 +32,9 @@ public class LessonModuleJpaEntity {
     @Column(name = "generator_workflow_variant_key", length = 120)
     private String generatorWorkflowVariantKey;
 
+    @Column(name = "generation_pipeline_key", length = 120)
+    private String generationPipelineKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -66,6 +69,10 @@ public class LessonModuleJpaEntity {
 
     public String getGeneratorWorkflowVariantKey() {
         return generatorWorkflowVariantKey;
+    }
+
+    public String getGenerationPipelineKey() {
+        return generationPipelineKey;
     }
 
     public Instant getCreatedAt() {

@@ -21,6 +21,7 @@ class LessonGenerationPromptFactoryTest {
                 true,
                 "lesson-generator:v1",
                 "draft-generation-with-review:v1",
+                null,
                 Instant.now(),
                 Instant.now());
 
@@ -43,6 +44,7 @@ class LessonGenerationPromptFactoryTest {
                 1,
                 true,
                 "lesson-generator:hsk5_v1",
+                null,
                 null,
                 Instant.now(),
                 Instant.now());

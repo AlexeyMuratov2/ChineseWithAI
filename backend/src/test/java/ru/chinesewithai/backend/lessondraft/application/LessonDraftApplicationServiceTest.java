@@ -18,7 +18,6 @@ import ru.chinesewithai.backend.lessondraft.application.command.ReorderLessonDra
 import ru.chinesewithai.backend.lessondraft.application.exception.InvalidSourcePayloadException;
 import ru.chinesewithai.backend.lessondraft.application.exception.SourceNotFoundException;
 import ru.chinesewithai.backend.lessondraft.application.exception.SourceOrderMismatchException;
-import ru.chinesewithai.backend.lessondraft.application.port.out.CurrentUserIdProvider;
 import ru.chinesewithai.backend.lessondraft.application.port.out.LessonDraftRepository;
 import ru.chinesewithai.backend.lessondraft.application.service.LessonDraftApplicationService;
 import ru.chinesewithai.backend.lessondraft.domain.model.LanguageTag;
@@ -28,29 +27,22 @@ import ru.chinesewithai.backend.lessondraft.domain.model.LessonDraftSourceType;
 class LessonDraftApplicationServiceTest {
 
     private final LessonDraftRepository lessonDraftRepository = mock(LessonDraftRepository.class);
-    private final CurrentUserIdProvider currentUserIdProvider = mock(CurrentUserIdProvider.class);
-    private final LessonDraftApplicationService service =
-            new LessonDraftApplicationService(lessonDraftRepository, currentUserIdProvider);
+    private final LessonDraftApplicationService service = new LessonDraftApplicationService(lessonDraftRepository);
 
     @Test
     void createDraftUsesDefaultLanguages() {
-        var ownerId = UUID.randomUUID();
-        when(currentUserIdProvider.getCurrentUserId()).thenReturn(ownerId);
         when(lessonDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var view = service.createDraft(new CreateLessonDraftCommand("My draft", null, null, null, null));
 
-        assertThat(view.ownerId()).isEqualTo(ownerId);
         assertThat(view.explanationLanguage()).isEqualTo("zh");
         assertThat(view.translationLanguage()).isEqualTo("en");
     }
 
     @Test
     void addDocumentSourceRejectsTextPayload() {
-        var ownerId = UUID.randomUUID();
-        var draft = newDraft(ownerId);
-        when(currentUserIdProvider.getCurrentUserId()).thenReturn(ownerId);
-        when(lessonDraftRepository.findByIdAndOwnerId(draft.id(), ownerId)).thenReturn(Optional.of(draft));
+        var draft = newDraft();
+        when(lessonDraftRepository.findById(draft.id())).thenReturn(Optional.of(draft));
 
         assertThatThrownBy(() -> service.addSource(new AddLessonDraftSourceCommand(
                         draft.id().value(),
@@ -63,10 +55,8 @@ class LessonDraftApplicationServiceTest {
 
     @Test
     void removeSourceThrowsWhenSourceMissing() {
-        var ownerId = UUID.randomUUID();
-        var draft = newDraft(ownerId);
-        when(currentUserIdProvider.getCurrentUserId()).thenReturn(ownerId);
-        when(lessonDraftRepository.findByIdAndOwnerId(draft.id(), ownerId)).thenReturn(Optional.of(draft));
+        var draft = newDraft();
+        when(lessonDraftRepository.findById(draft.id())).thenReturn(Optional.of(draft));
 
         assertThatThrownBy(() -> service.removeSource(
                         new RemoveLessonDraftSourceCommand(draft.id().value(), UUID.randomUUID())))
@@ -75,18 +65,16 @@ class LessonDraftApplicationServiceTest {
 
     @Test
     void reorderSourcesThrowsForMismatchedIds() {
-        var ownerId = UUID.randomUUID();
-        var draft = newDraft(ownerId).addTextSource("note", Instant.now().plusSeconds(30));
-        when(currentUserIdProvider.getCurrentUserId()).thenReturn(ownerId);
-        when(lessonDraftRepository.findByIdAndOwnerId(draft.id(), ownerId)).thenReturn(Optional.of(draft));
+        var draft = newDraft().addTextSource("note", Instant.now().plusSeconds(30));
+        when(lessonDraftRepository.findById(draft.id())).thenReturn(Optional.of(draft));
 
         assertThatThrownBy(() -> service.reorderSources(new ReorderLessonDraftSourcesCommand(
                         draft.id().value(), List.of(UUID.randomUUID()))))
                 .isInstanceOf(SourceOrderMismatchException.class);
     }
 
-    private static LessonDraft newDraft(UUID ownerId) {
+    private static LessonDraft newDraft() {
         return LessonDraft.createNew(
-                ownerId, "Draft", "description", "instructions", LanguageTag.of("zh"), LanguageTag.of("en"), Instant.now());
+                "Draft", "description", "instructions", LanguageTag.of("zh"), LanguageTag.of("en"), Instant.now());
     }
 }

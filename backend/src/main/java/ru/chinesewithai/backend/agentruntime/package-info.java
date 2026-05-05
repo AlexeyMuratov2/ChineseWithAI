@@ -1,4 +1,2 @@
-@org.springframework.modulith.ApplicationModule(
-        displayName = "Agent Runtime",
-        allowedDependencies = {"user::application"})
+@org.springframework.modulith.ApplicationModule(displayName = "Agent Runtime")
 package ru.chinesewithai.backend.agentruntime;

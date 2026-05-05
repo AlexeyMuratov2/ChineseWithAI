@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationIssue;
 import ru.chinesewithai.backend.agentruntime.application.port.out.OutputValidationStrategy;
@@ -98,7 +97,6 @@ class FinalOutputValidationServiceTest {
 
     private AgentSession session() {
         return AgentSession.createNew(
-                UUID.randomUUID(),
                 "assistant:v1",
                 "fake-model",
                 "Do it",

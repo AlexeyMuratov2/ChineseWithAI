@@ -14,7 +14,6 @@ final class LessonDraftJpaMapper {
     static LessonDraftJpaEntity toEntity(LessonDraft draft) {
         var entity = new LessonDraftJpaEntity(
                 draft.id().value(),
-                draft.ownerId(),
                 draft.title(),
                 draft.description(),
                 draft.userInstructions(),
@@ -34,7 +33,6 @@ final class LessonDraftJpaMapper {
 
         return LessonDraft.reconstitute(
                 new LessonDraftId(entity.getId()),
-                entity.getOwnerId(),
                 entity.getTitle(),
                 entity.getDescription(),
                 entity.getUserInstructions(),

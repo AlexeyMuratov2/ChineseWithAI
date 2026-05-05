@@ -27,7 +27,7 @@ class OpenApiIntegrationTest extends AbstractIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void apiDocsExposeBearerSchemeAndApplyItOnlyToProtectedOperations() throws Exception {
+    void apiDocsDoNotExposeAuthOrBearerSecurity() throws Exception {
         var response = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -36,23 +36,9 @@ class OpenApiIntegrationTest extends AbstractIntegrationTest {
 
         JsonNode root = objectMapper.readTree(response);
 
-        JsonNode bearerScheme = root.path("components").path("securitySchemes").path(OpenApiConfig.BEARER_AUTH_SCHEME);
-        assertThat(bearerScheme.path("type").asText()).isEqualTo("http");
-        assertThat(bearerScheme.path("scheme").asText()).isEqualTo("bearer");
-        assertThat(bearerScheme.path("bearerFormat").asText()).isEqualTo("JWT");
-        assertThat(bearerScheme.path("description").asText()).contains("without the Bearer prefix");
-
-        JsonNode currentUserSecurity =
-                root.path("paths").path("/api/v1/users/me").path("get").path("security");
-        assertThat(currentUserSecurity.isArray()).isTrue();
-        assertThat(currentUserSecurity).hasSize(1);
-        assertThat(currentUserSecurity.get(0).has(OpenApiConfig.BEARER_AUTH_SCHEME)).isTrue();
-
-        JsonNode registerSecurity =
-                root.path("paths").path("/api/v1/auth/register").path("post").path("security");
-        JsonNode loginSecurity =
-                root.path("paths").path("/api/v1/auth/login").path("post").path("security");
-        assertThat(registerSecurity.isMissingNode()).isTrue();
-        assertThat(loginSecurity.isMissingNode()).isTrue();
+        assertThat(root.path("components").path("securitySchemes").isMissingNode()).isTrue();
+        assertThat(root.path("paths").has("/api/v1/users/me")).isFalse();
+        assertThat(root.path("paths").has("/api/v1/auth/register")).isFalse();
+        assertThat(root.path("paths").has("/api/v1/auth/login")).isFalse();
     }
 }

@@ -9,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 import ru.chinesewithai.backend.lesson.domain.model.LearnerVocabularyStatus;
 
 @Entity
@@ -20,9 +19,6 @@ public class LearnerVocabularyProgressJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
-
-    @Column(name = "user_id", nullable = false, updatable = false)
-    private UUID userId;
 
     @Column(name = "hanzi", nullable = false, length = 255)
     private String hanzi;
@@ -62,7 +58,6 @@ public class LearnerVocabularyProgressJpaEntity {
 
     public LearnerVocabularyProgressJpaEntity(
             Long id,
-            UUID userId,
             String hanzi,
             String pinyin,
             String translation,
@@ -75,7 +70,6 @@ public class LearnerVocabularyProgressJpaEntity {
             Instant createdAt,
             Instant updatedAt) {
         this.id = id;
-        this.userId = userId;
         this.hanzi = hanzi;
         this.pinyin = pinyin;
         this.translation = translation;
@@ -91,10 +85,6 @@ public class LearnerVocabularyProgressJpaEntity {
 
     public Long getId() {
         return id;
-    }
-
-    public UUID getUserId() {
-        return userId;
     }
 
     public String getHanzi() {

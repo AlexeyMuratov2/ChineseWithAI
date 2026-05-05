@@ -1,6 +1,5 @@
 package ru.chinesewithai.backend.lessondraft.infrastructure.persistence;
 
-import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import ru.chinesewithai.backend.lessondraft.application.port.out.LessonDraftPage;
@@ -24,13 +23,13 @@ public class LessonDraftRepositoryJpaAdapter implements LessonDraftRepository {
     }
 
     @Override
-    public java.util.Optional<LessonDraft> findByIdAndOwnerId(LessonDraftId draftId, UUID ownerId) {
-        return repository.findByIdAndOwnerId(draftId.value(), ownerId).map(LessonDraftJpaMapper::toDomain);
+    public java.util.Optional<LessonDraft> findById(LessonDraftId draftId) {
+        return repository.findWithSourcesById(draftId.value()).map(LessonDraftJpaMapper::toDomain);
     }
 
     @Override
-    public LessonDraftPage findPageByOwnerId(UUID ownerId, int page, int size) {
-        var result = repository.findPageByOwnerId(ownerId, PageRequest.of(page, size));
+    public LessonDraftPage findPage(int page, int size) {
+        var result = repository.findPage(PageRequest.of(page, size));
         var items = result.getContent().stream().map(LessonDraftJpaMapper::toListItem).toList();
         return new LessonDraftPage(items, result.getTotalElements(), result.getTotalPages(), result.hasNext());
     }

@@ -20,6 +20,7 @@ class LessonContentValidatorTest {
             true,
             "lesson-generator:v1",
             "draft-generation-with-review:v1",
+            null,
             Instant.now(),
             Instant.now());
 
@@ -47,6 +48,7 @@ class LessonContentValidatorTest {
         assertThat(payload.title()).isEqualTo("Manual lesson");
         assertThat(payload.moduleKey()).isNull();
         assertThat(payload.studyLanguage()).isEqualTo("zh");
+        assertThat(payload.reviewWords()).isEmpty();
     }
 
     @Test
@@ -86,6 +88,7 @@ class LessonContentValidatorTest {
 
         assertThat(payload.moduleKey()).isEqualTo("TestModule");
         assertThat(payload.schemaVersion()).isEqualTo(1);
+        assertThat(payload.reviewWords()).isEmpty();
     }
 
     @Test

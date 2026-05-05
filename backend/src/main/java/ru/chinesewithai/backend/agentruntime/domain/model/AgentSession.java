@@ -7,7 +7,6 @@ import java.util.UUID;
 public final class AgentSession {
 
     private final UUID id;
-    private final UUID ownerId;
     private final String profileKey;
     private final String modelKey;
     private final String task;
@@ -24,7 +23,6 @@ public final class AgentSession {
 
     private AgentSession(
             UUID id,
-            UUID ownerId,
             String profileKey,
             String modelKey,
             String task,
@@ -39,7 +37,6 @@ public final class AgentSession {
             Instant finishedAt,
             Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
-        this.ownerId = Objects.requireNonNull(ownerId, "ownerId must not be null");
         this.profileKey = requireText(profileKey, "profileKey");
         this.modelKey = requireText(modelKey, "modelKey");
         this.task = requireText(task, "task");
@@ -55,24 +52,21 @@ public final class AgentSession {
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
     }
 
-    public static AgentSession createNew(
-            UUID ownerId, String profileKey, String modelKey, String task, String inputJson, Instant now) {
-        return createNew(ownerId, profileKey, modelKey, task, inputJson, null, null, now);
+    public static AgentSession createNew(String profileKey, String modelKey, String task, String inputJson, Instant now) {
+        return createNew(profileKey, modelKey, task, inputJson, null, null, now);
     }
 
     public static AgentSession createNew(
-            UUID ownerId,
             String profileKey,
             String modelKey,
             String task,
             String inputJson,
             String systemPromptAppendix,
             Instant now) {
-        return createNew(ownerId, profileKey, modelKey, task, inputJson, systemPromptAppendix, null, now);
+        return createNew(profileKey, modelKey, task, inputJson, systemPromptAppendix, null, now);
     }
 
     public static AgentSession createNew(
-            UUID ownerId,
             String profileKey,
             String modelKey,
             String task,
@@ -83,7 +77,6 @@ public final class AgentSession {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 UUID.randomUUID(),
-                ownerId,
                 profileKey,
                 modelKey,
                 task,
@@ -101,7 +94,6 @@ public final class AgentSession {
 
     public static AgentSession reconstitute(
             UUID id,
-            UUID ownerId,
             String profileKey,
             String modelKey,
             String task,
@@ -117,7 +109,6 @@ public final class AgentSession {
             Instant updatedAt) {
         return new AgentSession(
                 id,
-                ownerId,
                 profileKey,
                 modelKey,
                 task,
@@ -137,7 +128,6 @@ public final class AgentSession {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 id,
-                ownerId,
                 profileKey,
                 modelKey,
                 task,
@@ -157,7 +147,6 @@ public final class AgentSession {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 id,
-                ownerId,
                 profileKey,
                 modelKey,
                 task,
@@ -177,7 +166,6 @@ public final class AgentSession {
         Objects.requireNonNull(now, "now must not be null");
         return new AgentSession(
                 id,
-                ownerId,
                 profileKey,
                 modelKey,
                 task,
@@ -195,10 +183,6 @@ public final class AgentSession {
 
     public UUID id() {
         return id;
-    }
-
-    public UUID ownerId() {
-        return ownerId;
     }
 
     public String profileKey() {

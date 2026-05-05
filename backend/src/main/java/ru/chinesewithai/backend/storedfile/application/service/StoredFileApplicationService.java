@@ -3,7 +3,6 @@ package ru.chinesewithai.backend.storedfile.application.service;
 import java.io.InputStream;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.chinesewithai.backend.storedfile.application.api.DeleteStoredFileResult;
@@ -82,7 +81,6 @@ public class StoredFileApplicationService implements StoredFileFacade {
             long contentLength,
             Optional<String> contentType,
             Optional<String> originalFileName,
-            Optional<UUID> principalId,
             InputStream body) {
         var snapshot =
                 uploadSessions.find(sessionId).orElseThrow(() -> new UploadSessionNotFoundException(sessionId.value()));
@@ -100,8 +98,7 @@ public class StoredFileApplicationService implements StoredFileFacade {
                 scenario,
                 resolvedFileName,
                 resolvedContentType,
-                contentLength,
-                principalId.orElse(null));
+                contentLength);
 
         var now = Instant.now();
         uploadSessions.updateState(sessionId, UploadSessionState.RECEIVING, now);

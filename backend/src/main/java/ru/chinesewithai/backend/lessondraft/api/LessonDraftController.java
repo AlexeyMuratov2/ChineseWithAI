@@ -1,6 +1,5 @@
 package ru.chinesewithai.backend.lessondraft.api;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import ru.chinesewithai.backend.config.OpenApiConfig;
 import ru.chinesewithai.backend.lessondraft.api.dto.AddLessonDraftSourceRequest;
 import ru.chinesewithai.backend.lessondraft.api.dto.CreateLessonDraftRequest;
 import ru.chinesewithai.backend.lessondraft.api.dto.LessonDraftPageResponse;
@@ -43,7 +41,6 @@ import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftPageView
 import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftView;
 
 @RestController
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH_SCHEME)
 @RequestMapping("/api/v1/lesson-drafts")
 public class LessonDraftController {
 
@@ -160,7 +157,6 @@ public class LessonDraftController {
                 .toList();
         return new LessonDraftResponse(
                 view.id(),
-                view.ownerId(),
                 view.title(),
                 view.description(),
                 view.userInstructions(),

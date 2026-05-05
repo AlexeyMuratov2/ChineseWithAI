@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import ru.chinesewithai.backend.agentruntime.application.exception.AgentProfileConfigurationException;
 import ru.chinesewithai.backend.agentruntime.application.port.out.PreGenerationContextSection;
@@ -160,7 +159,6 @@ class DefaultPreGenerationWorkflowRunnerTest {
 
     private AgentSession session(String workflowVariantKey) {
         return AgentSession.createNew(
-                UUID.randomUUID(),
                 "test-agent:v1",
                 "fake-model",
                 "Do the thing",

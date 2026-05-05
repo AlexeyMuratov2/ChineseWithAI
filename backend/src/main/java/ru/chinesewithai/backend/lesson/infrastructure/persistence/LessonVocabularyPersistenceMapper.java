@@ -13,7 +13,6 @@ public class LessonVocabularyPersistenceMapper {
         return new LessonVocabularyItemJpaEntity(
                 item.id(),
                 item.lessonId().value(),
-                item.userId(),
                 item.hanzi(),
                 item.pinyin(),
                 item.translation(),
@@ -25,7 +24,6 @@ public class LessonVocabularyPersistenceMapper {
         return LessonVocabularyItem.reconstitute(
                 entity.getId(),
                 new LessonId(entity.getLessonId()),
-                entity.getUserId(),
                 entity.getHanzi(),
                 entity.getPinyin(),
                 entity.getTranslation(),
@@ -36,7 +34,6 @@ public class LessonVocabularyPersistenceMapper {
     public LearnerVocabularyProgressJpaEntity toEntity(LearnerVocabularyProgress progress) {
         return new LearnerVocabularyProgressJpaEntity(
                 progress.id(),
-                progress.userId(),
                 progress.hanzi(),
                 progress.pinyin(),
                 progress.translation(),
@@ -53,7 +50,6 @@ public class LessonVocabularyPersistenceMapper {
     public LearnerVocabularyProgress toDomain(LearnerVocabularyProgressJpaEntity entity) {
         return LearnerVocabularyProgress.reconstitute(
                 entity.getId(),
-                entity.getUserId(),
                 entity.getHanzi(),
                 entity.getPinyin(),
                 entity.getTranslation(),

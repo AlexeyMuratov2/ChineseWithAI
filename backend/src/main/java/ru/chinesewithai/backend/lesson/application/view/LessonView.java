@@ -5,7 +5,6 @@ import java.util.UUID;
 
 public record LessonView(
         UUID id,
-        UUID ownerId,
         String moduleKey,
         UUID sourceDraftId,
         UUID generatorSessionId,

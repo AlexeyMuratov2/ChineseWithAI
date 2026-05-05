@@ -1,7 +1,6 @@
 package ru.chinesewithai.backend.storedfile.application.security;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Inputs available to security strategies before/after the request body is consumed. Kept free of
@@ -11,25 +10,21 @@ public record UploadSecurityContext(
         UploadScenario scenario,
         Optional<String> originalFileName,
         Optional<String> declaredContentType,
-        Optional<Long> expectedContentLength,
-        Optional<UUID> principalId) {
+        Optional<Long> expectedContentLength) {
 
     public static UploadSecurityContext httpUpload(
             UploadScenario scenario,
             String originalFileName,
             String declaredContentType,
-            Long expectedContentLength,
-            UUID principalId) {
+            Long expectedContentLength) {
         return new UploadSecurityContext(
                 scenario,
                 Optional.ofNullable(originalFileName),
                 Optional.ofNullable(declaredContentType),
-                Optional.ofNullable(expectedContentLength),
-                Optional.ofNullable(principalId));
+                Optional.ofNullable(expectedContentLength));
     }
 
     public static UploadSecurityContext programmatic(UploadScenario scenario) {
-        return new UploadSecurityContext(
-                scenario, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        return new UploadSecurityContext(scenario, Optional.empty(), Optional.empty(), Optional.empty());
     }
 }

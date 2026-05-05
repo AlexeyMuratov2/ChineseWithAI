@@ -15,9 +15,6 @@ public class AgentSessionJpaEntity {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "owner_id", nullable = false)
-    private UUID ownerId;
-
     @Column(name = "profile_key", nullable = false, length = 120)
     private String profileKey;
 
@@ -61,7 +58,6 @@ public class AgentSessionJpaEntity {
 
     public AgentSessionJpaEntity(
             UUID id,
-            UUID ownerId,
             String profileKey,
             String modelKey,
             String task,
@@ -76,7 +72,6 @@ public class AgentSessionJpaEntity {
             Instant finishedAt,
             Instant updatedAt) {
         this.id = id;
-        this.ownerId = ownerId;
         this.profileKey = profileKey;
         this.modelKey = modelKey;
         this.task = task;
@@ -94,10 +89,6 @@ public class AgentSessionJpaEntity {
 
     public UUID getId() {
         return id;
-    }
-
-    public UUID getOwnerId() {
-        return ownerId;
     }
 
     public String getProfileKey() {
