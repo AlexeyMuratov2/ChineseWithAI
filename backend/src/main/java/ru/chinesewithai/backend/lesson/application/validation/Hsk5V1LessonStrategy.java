@@ -13,6 +13,7 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
 
     public static final String MODULE_KEY = "hsk5_v1";
 
+    private static final String DOCUMENT_FILE = "DOCUMENT_FILE";
     private static final String TEXT_NOTE = "TEXT_NOTE";
     private static final String SENTENCES_FIELD = "sentences";
     private static final String EXAMPLE_SENTENCES_ALIAS = "exampleSentences";
@@ -32,15 +33,18 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
     @Override
     public void validateDraftForGeneration(LessonDraftView draft) {
         if (draft.sources().size() != 1) {
-            throw new LessonContentValidationException("hsk5_v1 requires exactly one TEXT_NOTE draft source");
+            throw new LessonContentValidationException("hsk5_v1 requires exactly one draft source");
         }
 
         var source = draft.sources().getFirst();
-        if (!TEXT_NOTE.equals(source.type())) {
-            throw new LessonContentValidationException("hsk5_v1 supports only TEXT_NOTE draft sources");
+        if (!TEXT_NOTE.equals(source.type()) && !DOCUMENT_FILE.equals(source.type())) {
+            throw new LessonContentValidationException("hsk5_v1 supports only TEXT_NOTE or DOCUMENT_FILE draft sources");
         }
-        if (source.textContent() == null || source.textContent().isBlank()) {
-            throw new LessonContentValidationException("hsk5_v1 requires non-empty textContent");
+        if (TEXT_NOTE.equals(source.type()) && (source.textContent() == null || source.textContent().isBlank())) {
+            throw new LessonContentValidationException("hsk5_v1 requires non-empty textContent for TEXT_NOTE");
+        }
+        if (DOCUMENT_FILE.equals(source.type()) && source.documentFileId() == null) {
+            throw new LessonContentValidationException("hsk5_v1 requires documentFileId for DOCUMENT_FILE");
         }
     }
 
@@ -58,13 +62,14 @@ public class Hsk5V1LessonStrategy implements LessonModuleStrategy {
     public String generationInstructions() {
         return """
                 hsk5_v1 rules:
-                - The draft contains exactly one TEXT_NOTE source. Use its textContent as the Chinese reading text.
+                - The draft contains exactly one source. If textContent is present, use it as the Chinese reading text.
+                - If textContent is absent, inspect the source fileContent. It may be a PDF or image encoded as base64; extract the visible Chinese text and use that as the reading text.
                 - moduleKey must be "hsk5_v1"; schemaVersion must match the module; studyLanguage should be "zh".
                 - The learner level is HSK5, so do not translate the reading text. Keep the tone natural and alive.
                 - newWords and reviewWords must both be present as arrays of {word, pinyin, translation}.
                 - Use review vocabulary from vocabularyReviewPlan when available. Put practiced review words in reviewWords.
                 - sections is an array of blocks in any order. Use only these block types: word_study, grammar, conversation, text, word_game.
-                - Add a text block with title, text, readingPrompt, and discussionPrompts. Prefer the draft TEXT_NOTE content in text. Do not add a translation field unless it is necessary for a graceful fallback.
+                - Add a text block with title, text, readingPrompt, and discussionPrompts. Prefer the draft source textContent in text. Do not add a translation field unless it is necessary for a graceful fallback.
                 - Add a grammar block with title and points. Each point has name, pattern, explanation, examples, and exercises. Grammar examples use sentence, translation, and optional notes. Grammar exercises use prompt and optional answerHint/sampleAnswer.
                 - Add a conversation block with title, mode, prompt, and followUpPrompts. mode should be make_sentence, perform, or free_talk.
                 - Add a word_game block with title, instructions, and rounds. Each round should use exactly these field names: prompt, answerWord, vocabularyStatus. Do not use expectedWord.

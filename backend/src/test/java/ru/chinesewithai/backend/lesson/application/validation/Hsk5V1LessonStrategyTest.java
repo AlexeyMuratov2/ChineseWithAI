@@ -65,11 +65,23 @@ class Hsk5V1LessonStrategyTest {
                         textSource("text one", 0),
                         textSource("text two", 1)))))
                 .isInstanceOf(LessonContentValidationException.class)
-                .hasMessageContaining("exactly one TEXT_NOTE");
+                .hasMessageContaining("exactly one draft source");
 
-        assertThatThrownBy(() -> strategy.validateDraftForGeneration(draft(List.of(documentSource()))))
+        assertThatThrownBy(() -> strategy.validateDraftForGeneration(draft(List.of(documentSourceWithoutFile()))))
                 .isInstanceOf(LessonContentValidationException.class)
-                .hasMessageContaining("only TEXT_NOTE");
+                .hasMessageContaining("documentFileId");
+    }
+
+    @Test
+    void acceptsDocumentDraftSourceWithExtractedText() {
+        assertThatCode(() -> strategy.validateDraftForGeneration(draft(List.of(documentSource("source text")))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void acceptsDocumentDraftSourceWithBinaryFile() {
+        assertThatCode(() -> strategy.validateDraftForGeneration(draft(List.of(documentSource()))))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -231,7 +243,23 @@ class Hsk5V1LessonStrategyTest {
     }
 
     private LessonDraftSourceView documentSource() {
+        return documentSource(null);
+    }
+
+    private LessonDraftSourceView documentSource(String textContent) {
         return new LessonDraftSourceView(
-                UUID.randomUUID(), "DOCUMENT_FILE", 0, null, UUID.randomUUID(), "source.pdf", Instant.now(), Instant.now());
+                UUID.randomUUID(),
+                "DOCUMENT_FILE",
+                0,
+                textContent,
+                UUID.randomUUID(),
+                "source.txt",
+                Instant.now(),
+                Instant.now());
+    }
+
+    private LessonDraftSourceView documentSourceWithoutFile() {
+        return new LessonDraftSourceView(
+                UUID.randomUUID(), "DOCUMENT_FILE", 0, null, null, "source.pdf", Instant.now(), Instant.now());
     }
 }

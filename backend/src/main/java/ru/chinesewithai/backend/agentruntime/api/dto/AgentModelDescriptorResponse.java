@@ -1,3 +1,6 @@
 package ru.chinesewithai.backend.agentruntime.api.dto;
 
-public record AgentModelDescriptorResponse(String modelKey, String displayName, String providerKey) {}
+import java.util.List;
+
+public record AgentModelDescriptorResponse(
+        String modelKey, String displayName, String providerKey, List<String> capabilities) {}

@@ -11,7 +11,11 @@ public class Hsk5GeneratedLessonQualityValidator {
 
     public void validate(JsonNode lessonJson, String expectedReadingText) {
         var sections = requireArray(lessonJson.get("sections"), "sections");
-        requireExactTextSection(sections, expectedReadingText);
+        if (expectedReadingText == null || expectedReadingText.isBlank()) {
+            requireTextSection(sections);
+        } else {
+            requireExactTextSection(sections, expectedReadingText);
+        }
         requireGrammarSection(sections);
 
         var newWords = readWords(requireArray(lessonJson.get("newWords"), "newWords"), "newWords");
@@ -28,6 +32,17 @@ public class Hsk5GeneratedLessonQualityValidator {
             }
         }
         throw new LessonContentValidationException("generated hsk5_v1 lesson must include the exact draft text");
+    }
+
+    private void requireTextSection(JsonNode sections) {
+        for (var section : sections) {
+            if ("text".equals(section.path("type").asText())
+                    && section.path("text").isTextual()
+                    && !section.path("text").asText().isBlank()) {
+                return;
+            }
+        }
+        throw new LessonContentValidationException("generated hsk5_v1 lesson must include a text section from the draft source");
     }
 
     private void requireGrammarSection(JsonNode sections) {

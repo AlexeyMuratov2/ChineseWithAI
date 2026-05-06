@@ -53,12 +53,17 @@ public final class LessonDraftSource {
     }
 
     public static LessonDraftSource createDocumentFile(int position, UUID documentFileId, String originalFileName, Instant now) {
+        return createDocumentFile(position, documentFileId, originalFileName, null, now);
+    }
+
+    public static LessonDraftSource createDocumentFile(
+            int position, UUID documentFileId, String originalFileName, String textContent, Instant now) {
         Objects.requireNonNull(now, "now must not be null");
         return new LessonDraftSource(
                 LessonDraftSourceId.newId(),
                 LessonDraftSourceType.DOCUMENT_FILE,
                 position,
-                null,
+                normalizeTextNoteNullable(textContent),
                 Objects.requireNonNull(documentFileId, "documentFileId must not be null"),
                 normalizeOriginalFileName(originalFileName),
                 now,
@@ -137,9 +142,6 @@ public final class LessonDraftSource {
             case DOCUMENT_FILE -> {
                 if (documentFileId == null) {
                     throw new IllegalArgumentException("documentFileId must be present for DOCUMENT_FILE");
-                }
-                if (textContent != null) {
-                    throw new IllegalArgumentException("textContent must be null for DOCUMENT_FILE");
                 }
             }
             default -> throw new IllegalArgumentException("unsupported source type: " + type);

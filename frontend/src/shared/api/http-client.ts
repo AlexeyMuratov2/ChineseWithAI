@@ -6,6 +6,12 @@ export type HttpRequestConfig = {
   body?: unknown
 }
 
+export type RawHttpRequestConfig = {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  headers?: Record<string, string>
+  body?: BodyInit
+}
+
 export class HttpError extends Error {
   readonly status: number
   readonly payload: unknown
@@ -44,6 +50,30 @@ export const httpClient = async <T>(path: string, config: HttpRequestConfig = {}
       ...config.headers,
     },
     body: config.body ? JSON.stringify(config.body) : undefined,
+  })
+
+  const payload = await parseResponsePayload(response)
+
+  if (!response.ok) {
+    let message = `HTTP error: ${response.status}`
+
+    if (isRecord(payload) && typeof payload.detail === 'string') {
+      message = payload.detail
+    } else if (typeof payload === 'string' && payload.length > 0) {
+      message = payload
+    }
+
+    throw new HttpError(response.status, message, payload)
+  }
+
+  return payload as T
+}
+
+export const rawHttpClient = async <T>(path: string, config: RawHttpRequestConfig = {}) => {
+  const response = await fetch(`${env.apiBaseUrl}${path}`, {
+    method: config.method ?? 'GET',
+    headers: config.headers,
+    body: config.body,
   })
 
   const payload = await parseResponsePayload(response)

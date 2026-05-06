@@ -2,6 +2,7 @@ package ru.chinesewithai.backend.storedfile.application.api;
 
 import java.io.InputStream;
 import java.util.Optional;
+import java.util.UUID;
 import ru.chinesewithai.backend.storedfile.application.command.CreateUploadSessionCommand;
 import ru.chinesewithai.backend.storedfile.application.command.DeleteStoredFileCommand;
 import ru.chinesewithai.backend.storedfile.application.command.StoreFileCommand;
@@ -38,6 +39,10 @@ public interface StoredFileFacade {
     Optional<StoredFileMetadata> getMetadata(StoredFileId id);
 
     Optional<StoredFileContent> openContent(StoredFileId id);
+
+    default Optional<StoredFileContent> openContent(UUID id) {
+        return openContent(StoredFileId.of(id));
+    }
 
     DeleteStoredFileResult delete(DeleteStoredFileCommand command);
 }

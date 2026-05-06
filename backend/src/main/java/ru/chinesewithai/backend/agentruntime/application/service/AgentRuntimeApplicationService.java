@@ -84,7 +84,14 @@ public class AgentRuntimeApplicationService
     @Transactional(readOnly = true)
     public List<AgentModelView> listModels() {
         return agentModelCatalog.findVisibleModels().stream()
-                .map(model -> new AgentModelView(model.modelKey(), model.displayName(), model.providerKey()))
+                .map(model -> new AgentModelView(
+                        model.modelKey(),
+                        model.displayName(),
+                        model.providerKey(),
+                        model.capabilities().stream()
+                                .sorted(java.util.Comparator.comparingInt(capability -> capability.ordinal()))
+                                .map(capability -> capability.apiName())
+                                .toList()))
                 .toList();
     }
 

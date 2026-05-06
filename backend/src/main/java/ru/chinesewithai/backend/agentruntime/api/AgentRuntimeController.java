@@ -105,7 +105,8 @@ public class AgentRuntimeController {
     }
 
     private AgentModelDescriptorResponse toResponse(AgentModelView view) {
-        return new AgentModelDescriptorResponse(view.modelKey(), view.displayName(), view.providerKey());
+        return new AgentModelDescriptorResponse(
+                view.modelKey(), view.displayName(), view.providerKey(), view.capabilities());
     }
 
     private AgentProfileSummaryResponse toResponse(AgentProfileSummaryView view) {

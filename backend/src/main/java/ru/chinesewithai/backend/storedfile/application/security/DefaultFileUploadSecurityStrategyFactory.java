@@ -22,7 +22,7 @@ public class DefaultFileUploadSecurityStrategyFactory implements FileUploadSecur
          * Strategies should remain stateless beans where possible.
          */
         return switch (scenario) {
-            case GENERIC_UPLOAD, CROSS_MODULE_STREAM -> permissive;
+            case GENERIC_UPLOAD, LESSON_SOURCE, CROSS_MODULE_STREAM -> permissive;
         };
     }
 }

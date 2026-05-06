@@ -61,7 +61,7 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
         try {
             lessonContentValidator.validate(request.rawOutputJson(), module);
             if (isHsk5Composer(request, module)) {
-                hsk5GeneratedLessonQualityValidator.validate(request.output(), readSourceText(request.sessionInputJson()));
+                hsk5GeneratedLessonQualityValidator.validate(request.output(), readSourceTextOrNull(request.sessionInputJson()));
             }
             return List.of();
         } catch (LessonContentValidationException ex) {
@@ -94,7 +94,7 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
         }
     }
 
-    private String readSourceText(String rawInputJson) {
+    private String readSourceTextOrNull(String rawInputJson) {
         try {
             var root = objectMapper.readTree(rawInputJson);
             var sourceText = root == null ? null : root.path("sourceText").asText(null);
@@ -102,7 +102,7 @@ public class LessonGeneratedContentOutputValidationStrategy implements OutputVal
                 sourceText = root == null ? null : root.path("draft").path("sources").path(0).path("textContent").asText(null);
             }
             if (sourceText == null || sourceText.isBlank()) {
-                throw new IllegalStateException("Composer session is missing sourceText in inputJson");
+                return null;
             }
             return sourceText.trim();
         } catch (JsonProcessingException ex) {

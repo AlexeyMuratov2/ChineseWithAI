@@ -12,6 +12,11 @@ public enum UploadScenario {
     GENERIC_UPLOAD,
 
     /**
+     * User-uploaded material that can be attached to a lesson draft source.
+     */
+    LESSON_SOURCE,
+
+    /**
      * Reserved for programmatic ingestion from other modules (same permissive policy for now).
      */
     CROSS_MODULE_STREAM

@@ -2,6 +2,7 @@ package ru.chinesewithai.backend.lesson.application.generation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -22,6 +23,7 @@ import ru.chinesewithai.backend.lesson.application.validation.LessonModuleStrate
 import ru.chinesewithai.backend.lesson.domain.model.LessonModule;
 import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftSourceView;
 import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftView;
+import ru.chinesewithai.backend.storedfile.application.api.StoredFileFacade;
 
 class Hsk5QualityLessonGenerationPipelineTest {
 
@@ -92,7 +94,7 @@ class Hsk5QualityLessonGenerationPipelineTest {
         return new Hsk5QualityLessonGenerationPipeline(
                 startAgentSessionUseCase,
                 traceRepository,
-                new LessonGenerationInputFactory(),
+                new LessonGenerationInputFactory(mock(StoredFileFacade.class)),
                 new LessonGenerationPromptFactory(new LessonModuleStrategyCatalog(List.of(new Hsk5V1LessonStrategy()))),
                 new Hsk5LessonArtifactValidator(),
                 objectMapper);

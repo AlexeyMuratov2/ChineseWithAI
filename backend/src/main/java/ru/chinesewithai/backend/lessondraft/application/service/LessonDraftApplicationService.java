@@ -49,9 +49,12 @@ public class LessonDraftApplicationService
                 DeleteLessonDraftUseCase {
 
     private final LessonDraftRepository lessonDraftRepository;
+    private final LessonDraftDocumentTextExtractor documentTextExtractor;
 
-    public LessonDraftApplicationService(LessonDraftRepository lessonDraftRepository) {
+    public LessonDraftApplicationService(
+            LessonDraftRepository lessonDraftRepository, LessonDraftDocumentTextExtractor documentTextExtractor) {
         this.lessonDraftRepository = lessonDraftRepository;
+        this.documentTextExtractor = documentTextExtractor;
     }
 
     @Override
@@ -132,7 +135,10 @@ public class LessonDraftApplicationService
             }
             case DOCUMENT_FILE -> {
                 validateDocumentPayload(command);
-                yield draft.addDocumentSource(command.documentFileId(), command.documentOriginalFileName(), now);
+                var extracted =
+                        documentTextExtractor.extract(command.documentFileId(), command.documentOriginalFileName());
+                yield draft.addDocumentSource(
+                        command.documentFileId(), extracted.originalFileName(), extracted.textContent(), now);
             }
         };
 

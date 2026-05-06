@@ -13,7 +13,7 @@ public class Hsk5LessonArtifactValidator {
         requireObject(artifact, "blueprint");
         requireText(artifact.get("title"), "blueprint.title");
         var readingText = requireText(artifact.get("readingText"), "blueprint.readingText");
-        if (!expectedReadingText.equals(readingText)) {
+        if (expectedReadingText != null && !expectedReadingText.equals(readingText)) {
             throw new LessonContentValidationException("blueprint.readingText must match the draft text exactly");
         }
         validateWordArray(requireArray(artifact.get("newWords"), "blueprint.newWords"), "blueprint.newWords");

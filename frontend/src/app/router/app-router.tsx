@@ -1,7 +1,7 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 
 import { AppLayout } from '@/app/layouts/AppLayout'
-import { EmptyDashboardPage } from '@/pages/empty-dashboard'
+import { LessonWorkspacePage } from '@/pages/lesson-workspace'
 import { APP_ROUTES } from '@/shared/config/constants'
 
 export const appRouter = createBrowserRouter([
@@ -11,7 +11,7 @@ export const appRouter = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <EmptyDashboardPage />,
+        element: <LessonWorkspacePage />,
       },
     ],
   },

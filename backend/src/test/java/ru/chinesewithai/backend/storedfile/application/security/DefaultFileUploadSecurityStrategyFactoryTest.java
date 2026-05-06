@@ -12,6 +12,7 @@ class DefaultFileUploadSecurityStrategyFactoryTest {
         var factory = new DefaultFileUploadSecurityStrategyFactory(permissive);
 
         assertThat(factory.forScenario(UploadScenario.GENERIC_UPLOAD)).isSameAs(permissive);
+        assertThat(factory.forScenario(UploadScenario.LESSON_SOURCE)).isSameAs(permissive);
         assertThat(factory.forScenario(UploadScenario.CROSS_MODULE_STREAM)).isSameAs(permissive);
     }
 }

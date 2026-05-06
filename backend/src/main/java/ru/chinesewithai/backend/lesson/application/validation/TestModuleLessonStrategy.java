@@ -12,6 +12,7 @@ import ru.chinesewithai.backend.lessondraft.application.view.LessonDraftView;
 public class TestModuleLessonStrategy implements LessonModuleStrategy {
 
     private static final String MODULE_KEY = "TestModule";
+    private static final String DOCUMENT_FILE = "DOCUMENT_FILE";
     private static final String TEXT_NOTE = "TEXT_NOTE";
 
     @Override
@@ -22,15 +23,18 @@ public class TestModuleLessonStrategy implements LessonModuleStrategy {
     @Override
     public void validateDraftForGeneration(LessonDraftView draft) {
         if (draft.sources().size() != 1) {
-            throw new LessonContentValidationException("TestModule requires exactly one TEXT_NOTE draft source");
+            throw new LessonContentValidationException("TestModule requires exactly one draft source");
         }
 
         var source = draft.sources().getFirst();
-        if (!TEXT_NOTE.equals(source.type())) {
-            throw new LessonContentValidationException("TestModule supports only TEXT_NOTE draft sources");
+        if (!TEXT_NOTE.equals(source.type()) && !DOCUMENT_FILE.equals(source.type())) {
+            throw new LessonContentValidationException("TestModule supports only TEXT_NOTE or DOCUMENT_FILE draft sources");
         }
-        if (source.textContent() == null || source.textContent().isBlank()) {
-            throw new LessonContentValidationException("TestModule requires non-empty textContent");
+        if (TEXT_NOTE.equals(source.type()) && (source.textContent() == null || source.textContent().isBlank())) {
+            throw new LessonContentValidationException("TestModule requires non-empty textContent for TEXT_NOTE");
+        }
+        if (DOCUMENT_FILE.equals(source.type()) && source.documentFileId() == null) {
+            throw new LessonContentValidationException("TestModule requires documentFileId for DOCUMENT_FILE");
         }
     }
 
@@ -66,7 +70,8 @@ public class TestModuleLessonStrategy implements LessonModuleStrategy {
     public String generationInstructions() {
         return """
                 TestModule rules:
-                - The draft contains exactly one TEXT_NOTE source.
+                - The draft contains exactly one source. If textContent is present, use it.
+                - If textContent is absent, inspect fileContent. It may be a PDF or image encoded as base64; extract the visible Chinese text.
                 - moduleKey must be "TestModule".
                 - studyLanguage must be "zh".
                 - Extract the short Chinese reading text from the source and keep it in Chinese.

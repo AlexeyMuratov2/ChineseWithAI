@@ -60,9 +60,10 @@ public class Hsk5QualityLessonGenerationPipeline implements LessonGenerationPipe
         var runId = traceRepository.startRun(
                 request.draft().id(), request.module().moduleKey(), key(), Instant.now());
         try {
-            var sourceText = sourceText(request);
+            var sourceText = sourceTextOrNull(request);
             var baseInput = inputFactory.build(request.draft(), request.module());
             baseInput.put("sourceText", sourceText);
+            baseInput.put("sourceMaterialMode", sourceText == null ? "fileContent" : "textContent");
 
             var blueprint = runStage(
                     runId,
@@ -241,7 +242,9 @@ public class Hsk5QualityLessonGenerationPipeline implements LessonGenerationPipe
     private String blueprintPrompt() {
         return """
                 Return only a blueprint JSON object with title, readingText, newWords, reviewWords, grammarPoints, lessonTone, and lessonGoal.
-                readingText must exactly equal sourceText. newWords and reviewWords use {word,pinyin,translation}.
+                If sourceText is present, readingText must exactly equal sourceText.
+                If sourceText is null, inspect primarySource.fileContent.contentBase64 using its contentType/mediaCategory and set readingText to the Chinese text visible or extractable from the PDF/image source.
+                Do not put base64 data in readingText. newWords and reviewWords use {word,pinyin,translation}.
                 grammarPoints must contain at least one {name,pattern} item suitable for HSK 5.
                 """;
     }
@@ -270,11 +273,17 @@ public class Hsk5QualityLessonGenerationPipeline implements LessonGenerationPipe
     private String composerPrompt(LessonGenerationPipelineRequest request) {
         return promptFactory.buildSystemPromptAppendix(request.module())
                 + "\n\nCompose the final lesson by using the supplied blueprint, grammar, vocabularyPractice, and wordGame artifacts."
-                + " Include the exact sourceText in the text block and include at least one grammar block.";
+                + " If sourceText is present, include the exact sourceText in the text block."
+                + " If sourceText is null, include blueprint.readingText in the text block."
+                + " Include at least one grammar block.";
     }
 
-    private String sourceText(LessonGenerationPipelineRequest request) {
-        return request.draft().sources().getFirst().textContent().trim();
+    private String sourceTextOrNull(LessonGenerationPipelineRequest request) {
+        var textContent = request.draft().sources().getFirst().textContent();
+        if (textContent == null || textContent.isBlank()) {
+            return null;
+        }
+        return textContent.trim();
     }
 
     private JsonNode readJson(String rawJson) {

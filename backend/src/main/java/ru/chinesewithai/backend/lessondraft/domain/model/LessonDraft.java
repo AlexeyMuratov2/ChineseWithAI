@@ -127,10 +127,16 @@ public final class LessonDraft {
     }
 
     public LessonDraft addDocumentSource(UUID documentFileId, String documentOriginalFileName, Instant now) {
+        return addDocumentSource(documentFileId, documentOriginalFileName, null, now);
+    }
+
+    public LessonDraft addDocumentSource(
+            UUID documentFileId, String documentOriginalFileName, String textContent, Instant now) {
         Objects.requireNonNull(now, "now must not be null");
         var nextPosition = sources.size();
         var updatedSources = new ArrayList<>(sources);
-        updatedSources.add(LessonDraftSource.createDocumentFile(nextPosition, documentFileId, documentOriginalFileName, now));
+        updatedSources.add(
+                LessonDraftSource.createDocumentFile(nextPosition, documentFileId, documentOriginalFileName, textContent, now));
         return withSources(updatedSources, now);
     }
 

@@ -110,7 +110,7 @@ public class FakeModelGateway implements AgentModelGateway {
         var input = readJson(request.session().inputJson());
         var draft = input.path("draft");
         var title = draft.path("title").asText("HSK 5 Lesson");
-        var sourceText = input.path("sourceText").asText("").trim();
+        var sourceText = readSourceTextFromInput(input, "上传的资料帮助我们学习中文。");
         var reviewWords = extractReviewWords(request);
         var newWords = hsk5NewWords(reviewWords);
         var finalOutput = writeJson(Map.of(
@@ -179,7 +179,7 @@ public class FakeModelGateway implements AgentModelGateway {
     private AgentModelResponse generateHsk5ComposedLesson(AgentModelRequest request) {
         var input = readJson(request.session().inputJson());
         var blueprint = input.path("blueprint");
-        var sourceText = input.path("sourceText").asText("").trim();
+        var sourceText = readSourceTextFromInput(input, blueprint.path("readingText").asText("上传的资料帮助我们学习中文。"));
         var isRepairAttempt = request.messages().stream()
                 .anyMatch(message -> message.role() == AgentModelMessageRole.USER
                         && message.content() != null
@@ -285,9 +285,7 @@ public class FakeModelGateway implements AgentModelGateway {
         var explanationLanguage = draft.path("explanationLanguage").asText("zh");
         var translationLanguage = draft.path("translationLanguage").asText("en");
         var title = draft.path("title").asText("Test Lesson");
-        var sourceText = draft.path("sources").isArray() && !draft.path("sources").isEmpty()
-                ? draft.path("sources").get(0).path("textContent").asText("")
-                : "";
+        var sourceText = readSourceTextFromInput(input, "上传的资料帮助我们学习中文。");
         var reviewWords = extractReviewWords(request);
         var isRepairAttempt = request.messages().stream()
                 .anyMatch(message -> message.role() == AgentModelMessageRole.USER
@@ -361,9 +359,7 @@ public class FakeModelGateway implements AgentModelGateway {
         var explanationLanguage = draft.path("explanationLanguage").asText("zh");
         var translationLanguage = draft.path("translationLanguage").asText("en");
         var title = draft.path("title").asText("HSK 5 Lesson");
-        var sourceText = draft.path("sources").isArray() && !draft.path("sources").isEmpty()
-                ? draft.path("sources").get(0).path("textContent").asText("").trim()
-                : "";
+        var sourceText = readSourceTextFromInput(input, "上传的资料帮助我们学习中文。");
         var reviewWords = extractReviewWords(request);
         var isRepairAttempt = request.messages().stream()
                 .anyMatch(message -> message.role() == AgentModelMessageRole.USER
@@ -458,6 +454,26 @@ public class FakeModelGateway implements AgentModelGateway {
                 "instructions", "根据提示说出正确的词，然后自己造一个短句。",
                 "rounds", hsk5GameRounds(newWords, reviewWords)));
         return List.copyOf(sections);
+    }
+
+    private String readSourceTextFromInput(JsonNode input, String fallbackText) {
+        var sourceText = input.path("sourceText").asText("").trim();
+        if (!sourceText.isBlank()) {
+            return sourceText;
+        }
+
+        var sources = input.path("draft").path("sources");
+        if (sources.isArray() && !sources.isEmpty()) {
+            var textContent = sources.get(0).path("textContent").asText("").trim();
+            if (!textContent.isBlank()) {
+                return textContent;
+            }
+        }
+
+        if (fallbackText != null && !fallbackText.isBlank()) {
+            return fallbackText.trim();
+        }
+        return "上传的资料帮助我们学习中文。";
     }
 
     private Map<String, Object> hsk5WordStudy(Map<String, Object> word, String vocabularyStatus) {

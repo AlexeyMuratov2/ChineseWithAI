@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.chinesewithai.backend.AbstractIntegrationTest;
 import ru.chinesewithai.backend.TestcontainersConfiguration;
+import ru.chinesewithai.backend.storedfile.api.StoredFileController;
 
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
@@ -48,6 +50,8 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
         jdbcTemplate.update("DELETE FROM agent_sessions");
         jdbcTemplate.update("DELETE FROM lesson_draft_sources");
         jdbcTemplate.update("DELETE FROM lesson_drafts");
+        jdbcTemplate.update("DELETE FROM file_upload_sessions");
+        jdbcTemplate.update("DELETE FROM stored_files");
     }
 
     @Test
@@ -309,6 +313,28 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void generateHsk5FromDocumentDraftUsesExtractedFileText() throws Exception {
+        var draftId = createDraft("HSK5 from file");
+        var sourceText = "保持清晰的态度，可以帮助我们解决复杂的问题。";
+        var fileId = uploadTextFile("hsk5-source.txt", sourceText);
+        addDocumentSource(draftId, fileId, "hsk5-source.txt");
+
+        var generateResponse = mockMvc.perform(post("/api/v1/lessons/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", draftId,
+                                "moduleKey", "hsk5_v1",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("hsk5_v1"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertContainsTextSection(objectMapper.readTree(generateResponse).path("content"), sourceText);
+    }
+
+    @Test
     void generateHsk5RepairsInvalidAgentOutputAndCreatesLesson() throws Exception {
         var draftId = createDraftWithSingleTextSource(
                 "Repairable HSK5 output", "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]");
@@ -494,10 +520,11 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
             addTextSource(draftId, "secondary source");
         }
         if (addDocumentSource) {
+            var documentFileId = uploadTextFile("source.txt", "document source");
             var payload = objectMapper.writeValueAsString(Map.of(
                     "type", "DOCUMENT_FILE",
-                    "documentFileId", UUID.randomUUID(),
-                    "documentOriginalFileName", "source.pdf"));
+                    "documentFileId", documentFileId,
+                    "documentOriginalFileName", "source.txt"));
             mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(payload))
@@ -524,6 +551,48 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isOk());
+    }
+
+    private void addDocumentSource(UUID draftId, UUID fileId, String originalFileName) throws Exception {
+        var payload = objectMapper.writeValueAsString(Map.of(
+                "type", "DOCUMENT_FILE",
+                "documentFileId", fileId,
+                "documentOriginalFileName", originalFileName));
+        mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk());
+    }
+
+    private UUID uploadTextFile(String originalFileName, String text) throws Exception {
+        var bytes = text.getBytes(StandardCharsets.UTF_8);
+        var sessionPayload = objectMapper.writeValueAsString(Map.of(
+                "scenario",
+                "GENERIC_UPLOAD",
+                "expectedContentLength",
+                bytes.length,
+                "declaredContentType",
+                "text/plain",
+                "originalFileName",
+                originalFileName));
+        var sessionResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(sessionPayload))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        var sessionId = UUID.fromString(objectMapper.readTree(sessionResponse).get("sessionId").asText());
+
+        var uploadResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions/{sessionId}/content", sessionId)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .header(StoredFileController.HEADER_ORIGINAL_FILE_NAME, originalFileName)
+                        .content(bytes))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return UUID.fromString(objectMapper.readTree(uploadResponse).get("id").asText());
     }
 
     private JsonNode validTestModuleLessonJson() {

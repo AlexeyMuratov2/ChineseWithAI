@@ -9,7 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.chinesewithai.backend.AbstractIntegrationTest;
 import ru.chinesewithai.backend.TestcontainersConfiguration;
+import ru.chinesewithai.backend.storedfile.api.StoredFileController;
 
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
@@ -41,6 +44,8 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
     void clean() {
         jdbcTemplate.update("DELETE FROM lesson_generation_run_stages");
         jdbcTemplate.update("DELETE FROM lesson_generation_runs");
+        jdbcTemplate.update("DELETE FROM file_upload_sessions");
+        jdbcTemplate.update("DELETE FROM stored_files");
         jdbcTemplate.update("DELETE FROM lesson_draft_sources");
         jdbcTemplate.update("DELETE FROM lesson_drafts");
     }
@@ -81,14 +86,15 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
 
         var textSourceId = UUID.fromString(objectMapper.readTree(afterText).get("sources").get(0).get("id").asText());
 
-        var documentFileId = UUID.randomUUID();
+        var documentFileId = uploadTextFile("airport-handbook.txt", "机场见面以后，我们先确认登机口，然后再买咖啡。");
         var addDocPayload = objectMapper.writeValueAsString(
-                new AddSourcePayload("DOCUMENT_FILE", null, documentFileId, "airport-handbook.pdf"));
+                new AddSourcePayload("DOCUMENT_FILE", null, documentFileId, "airport-handbook.txt"));
         var afterDoc = mockMvc.perform(post("/api/v1/lesson-drafts/{draftId}/sources", draftId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(addDocPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sources.length()").value(2))
+                .andExpect(jsonPath("$.sources[1].textContent").value("机场见面以后，我们先确认登机口，然后再买咖啡。"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -151,6 +157,37 @@ class LessonDraftControllerIntegrationTest extends AbstractIntegrationTest {
             }
         }
         throw new IllegalStateException("Source type not found in payload: " + type);
+    }
+
+    private UUID uploadTextFile(String originalFileName, String text) throws Exception {
+        var bytes = text.getBytes(StandardCharsets.UTF_8);
+        var sessionPayload = objectMapper.writeValueAsString(Map.of(
+                "scenario",
+                "GENERIC_UPLOAD",
+                "expectedContentLength",
+                bytes.length,
+                "declaredContentType",
+                "text/plain",
+                "originalFileName",
+                originalFileName));
+        var sessionResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(sessionPayload))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        var sessionId = UUID.fromString(objectMapper.readTree(sessionResponse).get("sessionId").asText());
+
+        var uploadResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions/{sessionId}/content", sessionId)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .header(StoredFileController.HEADER_ORIGINAL_FILE_NAME, originalFileName)
+                        .content(bytes))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return UUID.fromString(objectMapper.readTree(uploadResponse).get("id").asText());
     }
 
     private record CreateDraftPayload(

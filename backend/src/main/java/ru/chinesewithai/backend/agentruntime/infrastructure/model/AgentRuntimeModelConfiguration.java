@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties({DeepSeekProperties.class, AgentRuntimeProperties.class})
+@EnableConfigurationProperties({DeepSeekProperties.class, QwenProperties.class, AgentRuntimeProperties.class})
 public class AgentRuntimeModelConfiguration {
 
     @Bean

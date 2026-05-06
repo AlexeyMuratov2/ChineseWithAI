@@ -19,6 +19,8 @@ import ru.chinesewithai.backend.lessondraft.application.exception.InvalidSourceP
 import ru.chinesewithai.backend.lessondraft.application.exception.SourceNotFoundException;
 import ru.chinesewithai.backend.lessondraft.application.exception.SourceOrderMismatchException;
 import ru.chinesewithai.backend.lessondraft.application.port.out.LessonDraftRepository;
+import ru.chinesewithai.backend.lessondraft.application.service.ExtractedLessonDraftDocumentSource;
+import ru.chinesewithai.backend.lessondraft.application.service.LessonDraftDocumentTextExtractor;
 import ru.chinesewithai.backend.lessondraft.application.service.LessonDraftApplicationService;
 import ru.chinesewithai.backend.lessondraft.domain.model.LanguageTag;
 import ru.chinesewithai.backend.lessondraft.domain.model.LessonDraft;
@@ -27,7 +29,9 @@ import ru.chinesewithai.backend.lessondraft.domain.model.LessonDraftSourceType;
 class LessonDraftApplicationServiceTest {
 
     private final LessonDraftRepository lessonDraftRepository = mock(LessonDraftRepository.class);
-    private final LessonDraftApplicationService service = new LessonDraftApplicationService(lessonDraftRepository);
+    private final LessonDraftDocumentTextExtractor documentTextExtractor = mock(LessonDraftDocumentTextExtractor.class);
+    private final LessonDraftApplicationService service =
+            new LessonDraftApplicationService(lessonDraftRepository, documentTextExtractor);
 
     @Test
     void createDraftUsesDefaultLanguages() {
@@ -51,6 +55,25 @@ class LessonDraftApplicationServiceTest {
                         UUID.randomUUID(),
                         "doc.pdf")))
                 .isInstanceOf(InvalidSourcePayloadException.class);
+    }
+
+    @Test
+    void addDocumentSourceStoresExtractedText() {
+        var draft = newDraft();
+        var documentFileId = UUID.randomUUID();
+        when(lessonDraftRepository.findById(draft.id())).thenReturn(Optional.of(draft));
+        when(documentTextExtractor.extract(documentFileId, "source.txt"))
+                .thenReturn(new ExtractedLessonDraftDocumentSource("extracted text", "source.txt"));
+        when(lessonDraftRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var view = service.addSource(new AddLessonDraftSourceCommand(
+                draft.id().value(), LessonDraftSourceType.DOCUMENT_FILE, null, documentFileId, "source.txt"));
+
+        assertThat(view.sources()).singleElement().satisfies(source -> {
+            assertThat(source.type()).isEqualTo("DOCUMENT_FILE");
+            assertThat(source.textContent()).isEqualTo("extracted text");
+            assertThat(source.documentOriginalFileName()).isEqualTo("source.txt");
+        });
     }
 
     @Test
