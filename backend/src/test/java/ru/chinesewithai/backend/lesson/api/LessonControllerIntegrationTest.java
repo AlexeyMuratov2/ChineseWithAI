@@ -63,8 +63,8 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
                 .getContentAsString();
 
         var modules = objectMapper.readTree(response);
-        assertThat(modules).hasSize(2);
-        assertThat(modules).extracting(node -> node.path("moduleKey").asText()).contains("TestModule", "hsk5_v1");
+        assertThat(modules).hasSize(3);
+        assertThat(modules).extracting(node -> node.path("moduleKey").asText()).contains("TestModule", "hsk5_v1", "hsk5_v2");
     }
 
     @Test
@@ -335,6 +335,62 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void generateHsk5V2NormalizesMultipleSourcesBeforeComposer() throws Exception {
+        var draftId = createDraft("HSK5 v2 source layer");
+        addTextSource(draftId, "Source one");
+        var imageFileId = uploadBinaryFile(
+                "page.png",
+                "image/png",
+                "fake-image-bytes".getBytes(StandardCharsets.UTF_8));
+        addDocumentSource(draftId, imageFileId, "page.png");
+
+        var generateResponse = mockMvc.perform(post("/api/v1/lessons/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "draftId", draftId,
+                                "moduleKey", "hsk5_v2",
+                                "modelKey", "fake-model"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.moduleKey").value("hsk5_v2"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        var generatedLesson = objectMapper.readTree(generateResponse);
+        var content = generatedLesson.path("content");
+        assertThat(content.path("sourcePack").path("sources")).hasSize(2);
+        assertThat(content.toString()).doesNotContain("contentBase64");
+        assertThat(content.toString()).doesNotContain("sourceBundle");
+
+        var lessonId = UUID.fromString(generatedLesson.get("id").asText());
+        var runId = UUID.fromString(jdbcTemplate.queryForObject(
+                "SELECT id::text FROM lesson_generation_runs WHERE lesson_id = ?",
+                String.class,
+                lessonId));
+        assertThat(generationStageKeys(runId)).containsExactly("source_normalization", "composer");
+
+        var normalizerSessionId = UUID.fromString(jdbcTemplate.queryForObject(
+                "SELECT agent_session_id::text FROM lesson_generation_run_stages WHERE run_id = ? AND stage_key = 'source_normalization'",
+                String.class,
+                runId));
+        var normalizerInput = objectMapper.readTree(jdbcTemplate.queryForObject(
+                "SELECT input_json FROM agent_sessions WHERE id = ?",
+                String.class,
+                normalizerSessionId));
+        assertThat(normalizerInput.has("sourceBundle")).isTrue();
+        assertThat(normalizerInput.toString()).doesNotContain("contentBase64");
+
+        var composerSessionId = UUID.fromString(generatedLesson.get("generatorSessionId").asText());
+        var composerInput = objectMapper.readTree(jdbcTemplate.queryForObject(
+                "SELECT input_json FROM agent_sessions WHERE id = ?",
+                String.class,
+                composerSessionId));
+        assertThat(composerInput.has("sourcePack")).isTrue();
+        assertThat(composerInput.has("sourceBundle")).isFalse();
+        assertThat(composerInput.toString()).doesNotContain("contentBase64");
+    }
+
+    @Test
     void generateHsk5RepairsInvalidAgentOutputAndCreatesLesson() throws Exception {
         var draftId = createDraftWithSingleTextSource(
                 "Repairable HSK5 output", "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]");
@@ -566,13 +622,17 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
 
     private UUID uploadTextFile(String originalFileName, String text) throws Exception {
         var bytes = text.getBytes(StandardCharsets.UTF_8);
+        return uploadBinaryFile(originalFileName, "text/plain", bytes);
+    }
+
+    private UUID uploadBinaryFile(String originalFileName, String contentType, byte[] bytes) throws Exception {
         var sessionPayload = objectMapper.writeValueAsString(Map.of(
                 "scenario",
                 "GENERIC_UPLOAD",
                 "expectedContentLength",
                 bytes.length,
                 "declaredContentType",
-                "text/plain",
+                contentType,
                 "originalFileName",
                 originalFileName));
         var sessionResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions")
@@ -585,7 +645,7 @@ class LessonControllerIntegrationTest extends AbstractIntegrationTest {
         var sessionId = UUID.fromString(objectMapper.readTree(sessionResponse).get("sessionId").asText());
 
         var uploadResponse = mockMvc.perform(post("/api/v1/stored-files/upload-sessions/{sessionId}/content", sessionId)
-                        .contentType(MediaType.TEXT_PLAIN)
+                        .contentType(contentType)
                         .header(StoredFileController.HEADER_ORIGINAL_FILE_NAME, originalFileName)
                         .content(bytes))
                 .andExpect(status().isOk())

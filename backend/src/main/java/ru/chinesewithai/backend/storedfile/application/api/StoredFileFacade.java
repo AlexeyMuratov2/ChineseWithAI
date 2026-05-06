@@ -38,6 +38,10 @@ public interface StoredFileFacade {
 
     Optional<StoredFileMetadata> getMetadata(StoredFileId id);
 
+    default Optional<StoredFileMetadata> getMetadata(UUID id) {
+        return getMetadata(StoredFileId.of(id));
+    }
+
     Optional<StoredFileContent> openContent(StoredFileId id);
 
     default Optional<StoredFileContent> openContent(UUID id) {

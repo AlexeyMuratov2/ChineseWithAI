@@ -28,6 +28,8 @@ public class FakeModelGateway implements AgentModelGateway {
     private static final String HSK5_VOCABULARY_PRACTICE_PROFILE_KEY = "lesson-stage:hsk5_v1_vocabulary_practice";
     private static final String HSK5_WORD_GAME_PROFILE_KEY = "lesson-stage:hsk5_v1_word_game";
     private static final String HSK5_COMPOSER_PROFILE_KEY = "lesson-generator:hsk5_v1_composer";
+    private static final String HSK5_V2_SOURCE_NORMALIZER_PROFILE_KEY = "lesson-stage:hsk5_v2_source_normalizer";
+    private static final String HSK5_V2_COMPOSER_PROFILE_KEY = "lesson-generator:hsk5_v2_composer";
     private static final String INVALID_OUTPUT_MARKER = "[[INVALID_LESSON_OUTPUT]]";
     private static final String REPAIRABLE_INVALID_OUTPUT_MARKER = "[[REPAIRABLE_INVALID_LESSON_OUTPUT]]";
     private static final String REPAIR_PROMPT_MARKER = "The previous final JSON response was rejected";
@@ -74,6 +76,12 @@ public class FakeModelGateway implements AgentModelGateway {
         }
         if (HSK5_COMPOSER_PROFILE_KEY.equals(request.profile().profileKey())) {
             return generateHsk5ComposedLesson(request);
+        }
+        if (HSK5_V2_SOURCE_NORMALIZER_PROFILE_KEY.equals(request.profile().profileKey())) {
+            return generateHsk5V2SourcePack(request);
+        }
+        if (HSK5_V2_COMPOSER_PROFILE_KEY.equals(request.profile().profileKey())) {
+            return generateHsk5V2ComposedLesson(request);
         }
 
         var toolMessage = request.messages().stream()
@@ -193,6 +201,82 @@ public class FakeModelGateway implements AgentModelGateway {
         } else {
             finalOutput = writeJson(validHsk5ComposedLesson(input, blueprint, sourceText));
         }
+        return finalOutput(finalOutput);
+    }
+
+    private AgentModelResponse generateHsk5V2SourcePack(AgentModelRequest request) {
+        var input = readJson(request.session().inputJson());
+        var sources = new ArrayList<Map<String, Object>>();
+        var sourceRefs = new ArrayList<Map<String, Object>>();
+        var combined = new StringBuilder();
+
+        for (var source : input.path("sourceBundle").path("sources")) {
+            var mediaCategory = source.path("mediaCategory").asText("text");
+            var normalizedText = source.path("textContent").asText("").trim();
+            var warnings = new ArrayList<String>();
+            if (normalizedText.isBlank() && "image".equals(mediaCategory)) {
+                normalizedText = "Text extracted from image source " + source.path("originalFileName").asText("image");
+            }
+            if (normalizedText.isBlank() && "pdf".equals(mediaCategory)) {
+                warnings.add("PDF source has no extracted text in fake model.");
+            }
+            if (!normalizedText.isBlank()) {
+                if (!combined.isEmpty()) {
+                    combined.append("\n\n");
+                }
+                combined.append(normalizedText);
+            }
+
+            var item = new LinkedHashMap<String, Object>();
+            item.put("sourceId", source.path("sourceId").asText());
+            item.put("position", source.path("position").asInt());
+            item.put("mediaCategory", mediaCategory);
+            item.put("originalFileName", source.path("originalFileName").asText(null));
+            item.put("normalizedText", normalizedText);
+            item.put("warnings", warnings);
+            sources.add(item);
+
+            sourceRefs.add(Map.of(
+                    "sourceId", source.path("sourceId").asText(),
+                    "position", source.path("position").asInt(),
+                    "label", "source-" + source.path("position").asInt()));
+        }
+
+        return finalOutput(writeJson(Map.of(
+                "sourcePackVersion", 1,
+                "sources", sources,
+                "combinedText", combined.toString(),
+                "sourceRefs", sourceRefs)));
+    }
+
+    private AgentModelResponse generateHsk5V2ComposedLesson(AgentModelRequest request) {
+        var input = readJson(request.session().inputJson());
+        var sourcePack = input.path("sourcePack");
+        var draft = input.path("draft");
+        var combinedText = sourcePack.path("combinedText").asText("");
+        if (combinedText.isBlank()) {
+            combinedText = "No normalized source text was produced.";
+        }
+
+        var finalOutput = writeJson(Map.of(
+                "schemaVersion", 1,
+                "moduleKey", "hsk5_v2",
+                "title", draft.path("title").asText("HSK 5 v2 source lesson"),
+                "studyLanguage", "zh",
+                "explanationLanguage", draft.path("explanationLanguage").asText("ru"),
+                "translationLanguage", draft.path("translationLanguage").asText("ru"),
+                "newWords", List.of(),
+                "reviewWords", List.of(),
+                "sourcePack", toMap(sourcePack),
+                "sections", List.of(
+                        Map.of(
+                                "type", "source_pack_summary",
+                                "title", "Source pack",
+                                "sourceCount", sourcePack.path("sources").size()),
+                        Map.of(
+                                "type", "text",
+                                "title", "Normalized source text",
+                                "text", combinedText))));
         return finalOutput(finalOutput);
     }
 

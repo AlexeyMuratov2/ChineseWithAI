@@ -19,7 +19,7 @@ import ru.chinesewithai.backend.TestcontainersConfiguration;
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "app.agentruntime.deepseek.api-key=")
+@TestPropertySource(properties = {"app.agentruntime.deepseek.api-key=", "app.agentruntime.qwen.api-key="})
 class AgentRuntimeCatalogWithoutDeepSeekIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired

@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.chinesewithai.backend.AbstractIntegrationTest;
 import ru.chinesewithai.backend.TestcontainersConfiguration;
@@ -18,6 +19,7 @@ import ru.chinesewithai.backend.TestcontainersConfiguration;
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "app.agentruntime.qwen.api-key=")
 class AgentRuntimeCatalogIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
